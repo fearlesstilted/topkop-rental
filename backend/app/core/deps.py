@@ -1,17 +1,16 @@
 from collections.abc import Awaitable, Callable
 
 from fastapi import Depends, Header, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decode_access_token
-from app.database import get_session
 from app.models import User, UserRole
+from app.repositories.auth import AuthRepository
+from app.repositories.deps import get_auth_repository
 
 
 async def get_current_user(
     authorization: str | None = Header(default=None),
-    session: AsyncSession = Depends(get_session),
+    auth_repository: AuthRepository = Depends(get_auth_repository),
 ) -> User:
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
@@ -22,9 +21,8 @@ async def get_current_user(
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    result = await session.execute(select(User).where(User.id == int(user_id)))
-    user = result.scalar_one_or_none()
-    if user is None or not user.is_active:
+    user = await auth_repository.get_active_user_by_id(int(user_id))
+    if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
 

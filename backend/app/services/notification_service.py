@@ -1,13 +1,9 @@
-"""Notification boundary; currently logs instead of sending Telegram messages."""
 import logging
-
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 
 async def notify_mechaniks_new_card(
-    _session: AsyncSession,
     card_title: str,
     equipment_code: str,
 ) -> None:

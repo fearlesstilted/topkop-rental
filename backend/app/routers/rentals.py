@@ -1,12 +1,10 @@
-
 from fastapi import APIRouter, Body, Depends, HTTPException, Response, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user, require_roles
-from app.database import get_session
-from app.models import Equipment, EquipmentCategory, Rental, UserRole
+from app.models import Rental, UserRole
 from app.models.enums import RentalStatus
+from app.repositories.deps import get_rental_repository
+from app.repositories.rentals import RentalRepository
 from app.schemas.rental import (
     RentalCalcRequest,
     RentalCalcResponse,
@@ -61,20 +59,19 @@ async def calculate(
 
 @router.get("", response_model=list[RentalOut])
 async def list_rentals(
-    session: AsyncSession = Depends(get_session),
+    rental_repository: RentalRepository = Depends(get_rental_repository),
     _: object = Depends(get_current_user),
 ) -> list[Rental]:
-    result = await session.execute(select(Rental).order_by(Rental.created_at.desc()))
-    return result.scalars().all()
+    return await rental_repository.list_rentals()
 
 
 @router.get("/{rental_id}", response_model=RentalOut)
 async def get_rental(
     rental_id: int,
-    session: AsyncSession = Depends(get_session),
+    rental_repository: RentalRepository = Depends(get_rental_repository),
     _: object = Depends(get_current_user),
 ) -> Rental:
-    item = await session.get(Rental, rental_id)
+    item = await rental_repository.get_rental(rental_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
     return item
@@ -88,9 +85,9 @@ async def get_rental(
 )
 async def create_rental(
     payload: RentalCreate,
-    session: AsyncSession = Depends(get_session),
+    rental_repository: RentalRepository = Depends(get_rental_repository),
 ) -> Rental:
-    equipment = await session.get(Equipment, payload.equipment_id)
+    equipment = await rental_repository.get_equipment(payload.equipment_id)
     if not equipment:
         raise HTTPException(status_code=400, detail="Unknown equipment")
 
@@ -108,33 +105,12 @@ async def create_rental(
         flat_rate=payload.flat_rate,
     )
 
-    rental = Rental(
-        equipment_id=payload.equipment_id,
-        client_name=payload.client_name,
-        client_nip=payload.client_nip,
-        client_address=payload.client_address,
-        client_phone=payload.client_phone,
-        start_date=payload.start_date,
-        end_date=payload.end_date,
-        weekdays_only=payload.weekdays_only,
-        align_to_monday=payload.align_to_monday,
-        rate_tier_1_7=payload.rate_tier_1_7,
-        rate_above_7=payload.rate_above_7,
-        flat_rate=payload.flat_rate,
-        daily_limit=payload.daily_limit,
-        overage_rate=payload.overage_rate,
-        discount_pct=payload.discount_pct,
-        surcharge_pct=payload.surcharge_pct,
+    return await rental_repository.create_rental(
+        payload,
         rental_days=days,
         subtotal=calc.subtotal,
         total_netto=calc.total_netto,
-        billing_entity=payload.billing_entity,
-        notes=payload.notes,
     )
-    session.add(rental)
-    await session.commit()
-    await session.refresh(rental)
-    return rental
 
 
 @router.patch(
@@ -145,19 +121,17 @@ async def create_rental(
 async def update_rental(
     rental_id: int,
     payload: RentalUpdate,
-    session: AsyncSession = Depends(get_session),
+    rental_repository: RentalRepository = Depends(get_rental_repository),
 ) -> Rental:
-    item = await session.get(Rental, rental_id)
+    item = await rental_repository.get_rental(rental_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
     if item.status == RentalStatus.RETURNED:
         raise HTTPException(status_code=409, detail="Nie można edytować zakończonej umowy.")
 
-    updated = payload.model_dump(exclude_unset=True)
-    for k, v in updated.items():
-        setattr(item, k, v)
+    updated_fields = await rental_repository.update_rental_fields(item, payload)
 
-    if updated.keys() & _RECALCULATED_FIELDS:
+    if updated_fields & _RECALCULATED_FIELDS:
         days = calculate_rental_days(
             item.start_date, item.end_date,
             weekdays_only=item.weekdays_only,
@@ -175,9 +149,7 @@ async def update_rental(
         item.subtotal = calc.subtotal
         item.total_netto = calc.total_netto
 
-    await session.commit()
-    await session.refresh(item)
-    return item
+    return await rental_repository.save_rental(item)
 
 
 @router.patch(
@@ -188,9 +160,9 @@ async def update_rental(
 async def change_status(
     rental_id: int,
     new_status: RentalStatus = Body(..., embed=True),
-    session: AsyncSession = Depends(get_session),
+    rental_repository: RentalRepository = Depends(get_rental_repository),
 ) -> Rental:
-    item = await session.get(Rental, rental_id)
+    item = await rental_repository.get_rental(rental_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
     allowed = _STATUS_TRANSITIONS.get(item.status, set())
@@ -198,11 +170,9 @@ async def change_status(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Niedozwolone przejście: {item.status.value} → {new_status.value}",
-        )
+    )
     item.status = new_status
-    await session.commit()
-    await session.refresh(item)
-    return item
+    return await rental_repository.save_rental(item)
 
 
 @router.delete(
@@ -210,8 +180,11 @@ async def change_status(
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(require_roles(UserRole.MANAGER, UserRole.BIURO))],
 )
-async def delete_rental(rental_id: int, session: AsyncSession = Depends(get_session)) -> None:
-    item = await session.get(Rental, rental_id)
+async def delete_rental(
+    rental_id: int,
+    rental_repository: RentalRepository = Depends(get_rental_repository),
+) -> None:
+    item = await rental_repository.get_rental(rental_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
     if item.status == RentalStatus.ACTIVE:
@@ -219,23 +192,22 @@ async def delete_rental(rental_id: int, session: AsyncSession = Depends(get_sess
             status_code=status.HTTP_409_CONFLICT,
             detail="Nie można usunąć aktywnej umowy. Najpierw anuluj lub zakończ najem.",
         )
-    await session.delete(item)
-    await session.commit()
+    await rental_repository.delete_rental(item)
 
 
 @router.get("/{rental_id}/pdf")
 async def rental_pdf(
     rental_id: int,
-    session: AsyncSession = Depends(get_session),
+    rental_repository: RentalRepository = Depends(get_rental_repository),
     _: object = Depends(get_current_user),
 ) -> Response:
-    rental = await session.get(Rental, rental_id)
+    rental = await rental_repository.get_rental(rental_id)
     if not rental:
         raise HTTPException(status_code=404, detail="Not found")
-    equipment = await session.get(Equipment, rental.equipment_id)
+    equipment = await rental_repository.get_equipment(rental.equipment_id)
     if not equipment:
         raise HTTPException(status_code=404, detail="Equipment not found")
-    category = await session.get(EquipmentCategory, equipment.category_id)
+    category = await rental_repository.get_category(equipment.category_id)
     data, mime = await render_rental_contract(rental, equipment, category)
     filename = f"umowa_{rental.id}.{'pdf' if mime == 'application/pdf' else 'html'}"
     return Response(

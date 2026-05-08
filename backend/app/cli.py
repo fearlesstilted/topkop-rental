@@ -3,12 +3,14 @@ import asyncio
 import sys
 
 from app.database import AsyncSessionLocal
+from app.repositories.auth import AuthRepository
+from app.repositories.equipment import EquipmentRepository
 from app.services.seed_service import seed_all
 
 
 async def _seed() -> None:
     async with AsyncSessionLocal() as session:
-        await seed_all(session)
+        await seed_all(AuthRepository(session), EquipmentRepository(session))
     print("Seed OK")
 
 

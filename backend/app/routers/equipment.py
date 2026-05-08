@@ -1,11 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user, require_roles
-from app.database import get_session
-from app.models import Equipment, EquipmentCategory, Rental, UserRole
-from app.models.enums import RentalStatus
+from app.models import Equipment, EquipmentCategory, UserRole
+from app.repositories.deps import get_equipment_repository
+from app.repositories.equipment import EquipmentRepository
 from app.schemas.equipment import (
     CategoryCreate,
     CategoryOut,
@@ -20,13 +18,10 @@ router = APIRouter()
 
 @router.get("/categories", response_model=list[CategoryOut])
 async def list_categories(
-    session: AsyncSession = Depends(get_session),
+    equipment_repository: EquipmentRepository = Depends(get_equipment_repository),
     _: object = Depends(get_current_user),
 ) -> list[EquipmentCategory]:
-    result = await session.execute(
-        select(EquipmentCategory).order_by(EquipmentCategory.sort_order, EquipmentCategory.name_pl)
-    )
-    return result.scalars().all()
+    return await equipment_repository.list_categories()
 
 
 @router.patch(
@@ -37,16 +32,12 @@ async def list_categories(
 async def update_category(
     cat_id: int,
     payload: CategoryUpdate,
-    session: AsyncSession = Depends(get_session),
+    equipment_repository: EquipmentRepository = Depends(get_equipment_repository),
 ) -> EquipmentCategory:
-    item = await session.get(EquipmentCategory, cat_id)
+    item = await equipment_repository.get_category(cat_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
-    for k, v in payload.model_dump(exclude_unset=True).items():
-        setattr(item, k, v)
-    await session.commit()
-    await session.refresh(item)
-    return item
+    return await equipment_repository.update_category(item, payload)
 
 
 @router.post(
@@ -57,40 +48,29 @@ async def update_category(
 )
 async def create_category(
     payload: CategoryCreate,
-    session: AsyncSession = Depends(get_session),
+    equipment_repository: EquipmentRepository = Depends(get_equipment_repository),
 ) -> EquipmentCategory:
-    existing = await session.execute(
-        select(EquipmentCategory).where(EquipmentCategory.slug == payload.slug)
-    )
-    if existing.scalar_one_or_none():
+    if await equipment_repository.get_category_by_slug(payload.slug):
         raise HTTPException(status_code=409, detail="Slug already exists")
-    cat = EquipmentCategory(**payload.model_dump())
-    session.add(cat)
-    await session.commit()
-    await session.refresh(cat)
-    return cat
+    return await equipment_repository.create_category(payload)
 
 
 @router.get("", response_model=list[EquipmentOut])
 async def list_equipment(
-    session: AsyncSession = Depends(get_session),
+    equipment_repository: EquipmentRepository = Depends(get_equipment_repository),
     category_id: int | None = None,
     _: object = Depends(get_current_user),
 ) -> list[Equipment]:
-    stmt = select(Equipment).order_by(Equipment.code)
-    if category_id is not None:
-        stmt = stmt.where(Equipment.category_id == category_id)
-    result = await session.execute(stmt)
-    return result.scalars().all()
+    return await equipment_repository.list_equipment(category_id)
 
 
 @router.get("/{equipment_id}", response_model=EquipmentOut)
 async def get_equipment(
     equipment_id: int,
-    session: AsyncSession = Depends(get_session),
+    equipment_repository: EquipmentRepository = Depends(get_equipment_repository),
     _: object = Depends(get_current_user),
 ) -> Equipment:
-    item = await session.get(Equipment, equipment_id)
+    item = await equipment_repository.get_equipment(equipment_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
     return item
@@ -104,19 +84,14 @@ async def get_equipment(
 )
 async def create_equipment(
     payload: EquipmentCreate,
-    session: AsyncSession = Depends(get_session),
+    equipment_repository: EquipmentRepository = Depends(get_equipment_repository),
 ) -> Equipment:
-    cat = await session.get(EquipmentCategory, payload.category_id)
+    cat = await equipment_repository.get_category(payload.category_id)
     if not cat:
         raise HTTPException(status_code=400, detail="Unknown category")
-    exists = await session.execute(select(Equipment).where(Equipment.code == payload.code))
-    if exists.scalar_one_or_none():
+    if await equipment_repository.get_equipment_by_code(payload.code):
         raise HTTPException(status_code=409, detail="Code already exists")
-    item = Equipment(**payload.model_dump())
-    session.add(item)
-    await session.commit()
-    await session.refresh(item)
-    return item
+    return await equipment_repository.create_equipment(payload)
 
 
 @router.patch(
@@ -127,16 +102,12 @@ async def create_equipment(
 async def update_equipment(
     equipment_id: int,
     payload: EquipmentUpdate,
-    session: AsyncSession = Depends(get_session),
+    equipment_repository: EquipmentRepository = Depends(get_equipment_repository),
 ) -> Equipment:
-    item = await session.get(Equipment, equipment_id)
+    item = await equipment_repository.get_equipment(equipment_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
-    for k, v in payload.model_dump(exclude_unset=True).items():
-        setattr(item, k, v)
-    await session.commit()
-    await session.refresh(item)
-    return item
+    return await equipment_repository.update_equipment(item, payload)
 
 
 @router.delete(
@@ -144,20 +115,16 @@ async def update_equipment(
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(require_roles(UserRole.MANAGER))],
 )
-async def delete_equipment(equipment_id: int, session: AsyncSession = Depends(get_session)) -> None:
-    item = await session.get(Equipment, equipment_id)
+async def delete_equipment(
+    equipment_id: int,
+    equipment_repository: EquipmentRepository = Depends(get_equipment_repository),
+) -> None:
+    item = await equipment_repository.get_equipment(equipment_id)
     if not item:
         raise HTTPException(status_code=404, detail="Not found")
-    active = await session.execute(
-        select(Rental).where(
-            Rental.equipment_id == equipment_id,
-            Rental.status == RentalStatus.ACTIVE,
-        )
-    )
-    if active.scalar_one_or_none():
+    if await equipment_repository.has_active_rental(equipment_id):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Nie można usunąć — sprzęt ma aktywną umowę najmu.",
         )
-    await session.delete(item)
-    await session.commit()
+    await equipment_repository.delete_equipment(item)

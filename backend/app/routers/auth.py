@@ -3,13 +3,12 @@ import time
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user
 from app.core.security import create_access_token, verify_pin
-from app.database import get_session
 from app.models import User
+from app.repositories.auth import AuthRepository
+from app.repositories.deps import get_auth_repository
 from app.schemas.auth import LoginRequest, LoginResponse, MeResponse
 
 router = APIRouter()
@@ -35,13 +34,12 @@ def _check_rate_limit(ip: str) -> None:
 async def login(
     payload: LoginRequest,
     request: Request,
-    session: AsyncSession = Depends(get_session),
+    auth_repository: AuthRepository = Depends(get_auth_repository),
 ) -> LoginResponse:
     ip = request.client.host if request.client else "unknown"
     _check_rate_limit(ip)
 
-    result = await session.execute(select(User).where(User.is_active.is_(True)))
-    for user in result.scalars():
+    for user in await auth_repository.list_active_users():
         if verify_pin(payload.pin, user.pin_hash):
             _failed[ip].clear()
             logger.info("LOGIN OK user=%s ip=%s", user.name, ip)

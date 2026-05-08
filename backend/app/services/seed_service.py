@@ -8,19 +8,11 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.config import get_settings
 from app.core.security import hash_pin
-from app.models import (
-    Equipment,
-    EquipmentCategory,
-    EquipmentStatus,
-    TrackingType,
-    User,
-    UserRole,
-)
+from app.models import EquipmentStatus, TrackingType, UserRole
+from app.repositories.auth import AuthRepository
+from app.repositories.equipment import EquipmentRepository
 
 CATEGORIES: list[tuple[str, str, TrackingType]] = [
     ("koparki", "Koparki", TrackingType.MTH),
@@ -44,18 +36,20 @@ CATEGORIES: list[tuple[str, str, TrackingType]] = [
 ]
 
 
-async def seed_categories(session: AsyncSession) -> None:
-    existing = {c.slug for c in (await session.execute(select(EquipmentCategory))).scalars()}
+async def seed_categories(equipment_repository: EquipmentRepository) -> None:
+    existing = await equipment_repository.list_category_slugs()
     for idx, (slug, name, tracking) in enumerate(CATEGORIES):
         if slug in existing:
             continue
-        session.add(EquipmentCategory(
-            slug=slug, name_pl=name, default_tracking=tracking, sort_order=idx,
-        ))
-    await session.flush()
+        await equipment_repository.add_category(
+            slug=slug,
+            name_pl=name,
+            default_tracking=tracking,
+            sort_order=idx,
+        )
 
 
-async def seed_users(session: AsyncSession) -> None:
+async def seed_users(auth_repository: AuthRepository) -> None:
     settings = get_settings()
     if not (
         settings.pin_default_biuro
@@ -69,44 +63,44 @@ async def seed_users(session: AsyncSession) -> None:
         ("Serwis", UserRole.MECHANIK, settings.pin_default_mechanik),
         ("Dyrektor", UserRole.MANAGER, settings.pin_default_manager),
     ]
-    existing = {u.name for u in (await session.execute(select(User))).scalars()}
+    existing = await auth_repository.list_user_names()
     for name, role, pin in defaults:
         if name in existing:
             continue
-        session.add(User(name=name, role=role, pin_hash=hash_pin(pin), is_active=True))
-    await session.flush()
+        await auth_repository.create_user(
+            name=name,
+            role=role,
+            pin_hash=hash_pin(pin),
+            is_active=True,
+        )
 
 
-async def seed_kobelco(session: AsyncSession) -> None:
-    existing = await session.execute(select(Equipment).where(Equipment.code == "KOB-302"))
-    if existing.scalar_one_or_none():
+async def seed_kobelco(equipment_repository: EquipmentRepository) -> None:
+    if await equipment_repository.get_equipment_by_code("KOB-302"):
         return
-    cat = await session.execute(
-        select(EquipmentCategory).where(EquipmentCategory.slug == "koparki")
-    )
-    cat_row = cat.scalar_one_or_none()
+    cat_row = await equipment_repository.get_category_by_slug("koparki")
     if cat_row is None:
         return
-    session.add(
-        Equipment(
-            category_id=cat_row.id,
-            code="KOB-302",
-            name="Mini koparka Kobelco 302",
-            manufacturer="Kobelco",
-            model="SK30SR / 302",
-            tracking_type=TrackingType.MTH,
-            rate_tier_1_7=Decimal("500"),
-            rate_above_7=Decimal("450"),
-            daily_limit=10,
-            overage_rate=Decimal("80"),
-            status=EquipmentStatus.AVAILABLE,
-        )
+    await equipment_repository.add_equipment(
+        category_id=cat_row.id,
+        code="KOB-302",
+        name="Mini koparka Kobelco 302",
+        manufacturer="Kobelco",
+        model="SK30SR / 302",
+        tracking_type=TrackingType.MTH,
+        rate_tier_1_7=Decimal("500"),
+        rate_above_7=Decimal("450"),
+        daily_limit=10,
+        overage_rate=Decimal("80"),
+        status=EquipmentStatus.AVAILABLE,
     )
-    await session.flush()
 
 
-async def seed_all(session: AsyncSession) -> None:
-    await seed_categories(session)
-    await seed_users(session)
-    await seed_kobelco(session)
-    await session.commit()
+async def seed_all(
+    auth_repository: AuthRepository,
+    equipment_repository: EquipmentRepository,
+) -> None:
+    await seed_categories(equipment_repository)
+    await seed_users(auth_repository)
+    await seed_kobelco(equipment_repository)
+    await equipment_repository.commit()
