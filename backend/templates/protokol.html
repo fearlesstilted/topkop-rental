@@ -1,0 +1,55 @@
+{% extends "_base.html" %}
+{% block title %}Protokół {% if inspection.type.value == "pickup" %}wydania{% else %}zwrotu{% endif %} nr {{ inspection.id }}{% endblock %}
+
+{% block docmeta %}
+<strong>Protokół {% if inspection.type.value == "pickup" %}wydania{% else %}zwrotu{% endif %} nr {{ inspection.id }}</strong><br>
+Data: {{ inspection.created_at.strftime("%Y-%m-%d %H:%M") if inspection.created_at else "" }}<br>
+{% if inspection.rental_id %}Umowa nr {{ inspection.rental_id }}{% endif %}
+{% endblock %}
+
+{% block body %}
+<h1>Protokół {% if inspection.type.value == "pickup" %}wydania{% else %}zwrotu{% endif %} sprzętu</h1>
+
+<table>
+  <tr><th>Sprzęt</th><td>{{ equipment.name }} ({{ equipment.code }})</td></tr>
+  {% if equipment.manufacturer or equipment.model %}
+  <tr><th>Producent / Model</th><td>{{ equipment.manufacturer or "" }} {{ equipment.model or "" }}{% if equipment.year %}, {{ equipment.year }}{% endif %}</td></tr>
+  {% endif %}
+  {% if inspection.meter_reading is not none %}
+  <tr><th>Stan licznika</th><td>{{ inspection.meter_reading }} {{ "mth" if equipment.tracking_type.value == "mth" else ("rbh" if equipment.tracking_type.value == "rbh" else "") }}</td></tr>
+  {% endif %}
+  {% if inspection.lat and inspection.lon %}
+  <tr><th>GPS</th><td>{{ "%.6f"|format(inspection.lat) }}, {{ "%.6f"|format(inspection.lon) }}{% if inspection.gps_accuracy_m %} (±{{ "%.0f"|format(inspection.gps_accuracy_m) }} m){% endif %}</td></tr>
+  {% endif %}
+  {% if inspection.client_signer_name %}
+  <tr><th>Podpisujący</th><td>{{ inspection.client_signer_name }}</td></tr>
+  {% endif %}
+</table>
+
+{% if photos %}
+<h2>Dokumentacja fotograficzna</h2>
+<div>
+  {% for p in photos %}
+    <div style="display:inline-block; text-align:center; margin:2mm;">
+      <img class="photo" src="file://{{ p.abs_path }}" alt="{{ p.slot }}"><br>
+      <span class="small">{{ p.slot }}</span>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if inspection.notes %}
+<h2>Uwagi</h2>
+<p>{{ inspection.notes }}</p>
+{% endif %}
+
+<div class="sign-block">
+  <div class="sign-cell">
+    {% if inspection.signature_abs_path %}
+      <img class="sig" src="file://{{ inspection.signature_abs_path }}" alt="podpis"><br>
+    {% endif %}
+    Podpis najemcy / odbierającego
+  </div>
+  <div class="sign-cell">Wydał / przyjął ({{ company.name }})</div>
+</div>
+{% endblock %}

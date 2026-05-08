@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Umowa najmu nr {{ rental.id }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 18mm 16mm 18mm;
+    @bottom-right {
+      content: "str. " counter(page) " / " counter(pages);
+      font-family: "Inter", "DejaVu Sans", Arial, sans-serif;
+      font-size: 8pt;
+      color: #666;
+    }
+    @bottom-left {
+      content: "Umowa najmu nr {{ rental.id }} · {{ company.name }}";
+      font-family: "Inter", "DejaVu Sans", Arial, sans-serif;
+      font-size: 8pt;
+      color: #666;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Inter", "DejaVu Sans", Arial, sans-serif;
+    font-size: 10.5pt;
+    color: #111;
+    line-height: 1.45;
+    margin: 0;
+  }
+  h1, h2, h3 { font-family: "Source Serif Pro", "DejaVu Serif", Georgia, serif; font-weight: 600; }
+
+  /* ── HEADER ── */
+  .doc-head {
+    border-bottom: 0.6pt solid #111;
+    padding-bottom: 6mm;
+    margin-bottom: 8mm;
+  }
+  .head-logo { max-height: 18mm; max-width: 72mm; display: block; margin-bottom: 3mm; }
+  .head-eyebrow {
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 2.5pt;
+    color: #555;
+    margin-bottom: 2mm;
+  }
+  .head-name {
+    font-family: "Source Serif Pro", "DejaVu Serif", Georgia, serif;
+    font-size: 22pt;
+    font-weight: 600;
+    line-height: 1.05;
+    margin: 0 0 3mm 0;
+    letter-spacing: -0.3pt;
+  }
+  .head-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9pt;
+    color: #555;
+  }
+  .head-meta .right { text-align: right; }
+
+  /* ── DOC TITLE ── */
+  .doc-title {
+    text-align: center;
+    margin: 8mm 0 6mm 0;
+  }
+  .doc-title .label {
+    font-family: "Source Serif Pro", "DejaVu Serif", Georgia, serif;
+    font-size: 18pt;
+    letter-spacing: 6pt;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  .doc-title .sub {
+    font-size: 9pt;
+    color: #666;
+    letter-spacing: 1pt;
+    text-transform: uppercase;
+    margin-top: 2mm;
+  }
+
+  /* ── FIELD ROWS ── */
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 8mm;
+    row-gap: 4mm;
+    margin-bottom: 6mm;
+  }
+  .field-grid.full { grid-template-columns: 1fr; }
+  .field {
+    display: flex;
+    flex-direction: column;
+  }
+  .field .lbl {
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 1.2pt;
+    color: #777;
+    margin-bottom: 1mm;
+  }
+  .field .val {
+    border-bottom: 0.5pt solid #111;
+    min-height: 5mm;
+    padding: 0 1mm 1mm 1mm;
+    font-size: 11pt;
+    font-weight: 500;
+  }
+  .field .val.empty { color: transparent; }
+
+  /* ── SECTIONS ── */
+  .section {
+    margin-top: 7mm;
+  }
+  .section-title {
+    font-family: "Source Serif Pro", "DejaVu Serif", Georgia, serif;
+    font-size: 11pt;
+    text-transform: uppercase;
+    letter-spacing: 2.5pt;
+    color: #111;
+    border-top: 0.4pt solid #111;
+    padding-top: 2mm;
+    margin: 0 0 3mm 0;
+  }
+
+  table.clean {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+  }
+  table.clean th, table.clean td {
+    text-align: left;
+    padding: 2mm 3mm;
+    border-bottom: 0.3pt solid #ccc;
+    vertical-align: top;
+  }
+  table.clean th {
+    font-weight: 500;
+    color: #555;
+    width: 38%;
+    background: transparent;
+  }
+  table.clean td.right { text-align: right; }
+  table.clean tr.total td, table.clean tr.total th {
+    font-weight: 600;
+    font-size: 11.5pt;
+    border-bottom: 0.6pt solid #111;
+    border-top: 0.6pt solid #111;
+    padding-top: 3mm;
+    padding-bottom: 3mm;
+  }
+
+  .notice {
+    background: #f7f5f0;
+    border-left: 2pt solid #111;
+    padding: 3mm 4mm;
+    font-size: 9.5pt;
+    color: #333;
+    margin: 5mm 0;
+  }
+
+  /* ── SIGNATURES ── */
+  .sign-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 16mm;
+    margin-top: 18mm;
+  }
+  .sign-cell {
+    border-top: 0.5pt solid #111;
+    padding-top: 2mm;
+    text-align: center;
+    font-size: 9pt;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 1.5pt;
+  }
+
+  /* ── PROTOKOŁ TABLE ── */
+  table.protokol {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4mm;
+    font-size: 9.5pt;
+  }
+  table.protokol th, table.protokol td {
+    border: 0.4pt solid #111;
+    padding: 2.5mm 3mm;
+    vertical-align: top;
+    height: 16mm;
+  }
+  table.protokol th {
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 8pt;
+    letter-spacing: 1pt;
+    color: #555;
+    background: #fafafa;
+    height: auto;
+  }
+
+  /* ── PAGE 2: WARUNKI ── */
+  .page-break { page-break-before: always; }
+
+  .warunki h2 {
+    font-family: "Source Serif Pro", "DejaVu Serif", Georgia, serif;
+    font-size: 16pt;
+    text-align: center;
+    letter-spacing: 4pt;
+    text-transform: uppercase;
+    margin: 0 0 8mm 0;
+    font-weight: 600;
+  }
+  .warunki ol {
+    counter-reset: w;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .warunki ol li {
+    counter-increment: w;
+    position: relative;
+    padding-left: 10mm;
+    margin-bottom: 4mm;
+    font-size: 10pt;
+    line-height: 1.55;
+    text-align: justify;
+  }
+  .warunki ol li::before {
+    content: counter(w) ".";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 8mm;
+    font-weight: 600;
+    color: #111;
+  }
+
+  .warunki-foot {
+    margin-top: 12mm;
+    padding-top: 4mm;
+    border-top: 0.4pt solid #111;
+    font-size: 8.5pt;
+    color: #666;
+    display: flex;
+    justify-content: space-between;
+  }
+</style>
+</head>
+<body>
+
+{# ───────── PAGE 1: UMOWA ───────── #}
+
+<div class="doc-head">
+  {% if company.kind == 'jdg' %}
+  <img src="topkop_logo.webp" class="head-logo" alt="TOP KOP">
+  {% else %}
+  <div class="head-eyebrow">Wypożyczalnia sprzętu budowlanego</div>
+  <div class="head-name">{{ company.name }}</div>
+  {% endif %}
+  <div class="head-meta">
+    <div>
+      {{ company.address }}<br>
+      tel. {{ company.phone }}{% if company.email %} · {{ company.email }}{% endif %}
+    </div>
+    <div class="right">
+      {% if company.nip %}NIP: {{ company.nip }}<br>{% endif %}
+      {% if company.krs %}KRS: {{ company.krs }}<br>{% endif %}
+      {% if company.regon %}REGON: {{ company.regon }}{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="doc-title">
+  <div class="label">Umowa najmu</div>
+  <div class="sub">nr {{ rental.id }} · {{ rental.created_at.strftime("%d.%m.%Y") if rental.created_at else "" }} · Gołdap</div>
+</div>
+
+<p style="margin: 0 0 5mm 0; font-size: 10pt;">
+  Zawarta pomiędzy <strong>Wynajmującym</strong>: {% if company.kind == 'jdg' %}„{{ company.name }}"{% else %}{{ company.name }}{% endif %}, {{ company.address }}{% if company.nip %}, NIP {{ company.nip }}{% endif %}
+  <br>
+  a <strong>Najemcą</strong>:
+</p>
+
+<div class="field-grid">
+  <div class="field">
+    <span class="lbl">Imię i nazwisko / Firma</span>
+    <span class="val">{{ rental.client_name or "" }}</span>
+  </div>
+  <div class="field">
+    <span class="lbl">NIP / PESEL</span>
+    <span class="val">{{ rental.client_nip or "" }}</span>
+  </div>
+  <div class="field">
+    <span class="lbl">Adres zamieszkania / siedziby</span>
+    <span class="val">{{ rental.client_address or "" }}</span>
+  </div>
+  <div class="field">
+    <span class="lbl">Telefon kontaktowy</span>
+    <span class="val">{{ rental.client_phone or "" }}</span>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Przedmiot najmu</div>
+  <table class="clean">
+    <tr><th>Kategoria</th><td>{{ category.name_pl }}</td></tr>
+    <tr><th>Sprzęt</th><td>{{ equipment.name }} ({{ equipment.code }})</td></tr>
+    {% if equipment.manufacturer or equipment.model %}
+    <tr><th>Producent / Model</th><td>{{ equipment.manufacturer or "" }} {{ equipment.model or "" }}{% if equipment.year %}, {{ equipment.year }}{% endif %}</td></tr>
+    {% endif %}
+    {% if rental.daily_limit %}
+    <tr><th>Dzienny limit</th><td>{{ rental.daily_limit }} {{ "mth" if equipment.tracking_type.value == "mth" else ("rbh" if equipment.tracking_type.value == "rbh" else "") }}</td></tr>
+    {% endif %}
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-title">Okres najmu</div>
+  <table class="clean">
+    <tr><th>Od</th><td>{{ rental.start_date.strftime("%d.%m.%Y") }}</td></tr>
+    <tr><th>Do</th><td>{{ rental.end_date.strftime("%d.%m.%Y") }}</td></tr>
+    <tr><th>Dni naliczone</th><td>{{ rental.rental_days }}{% if rental.weekdays_only %} (tylko dni robocze){% else %} (wszystkie dni){% endif %}</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-title">Wynagrodzenie (netto)</div>
+  <table class="clean">
+    {% if rental.flat_rate %}
+    <tr><th>Stawka dobowa</th><td class="right">{{ rental.rate_tier_1_7 }} zł</td></tr>
+    <tr><th>{{ rental.rental_days }} × {{ rental.rate_tier_1_7 }} zł</th><td class="right">{{ rental.subtotal }} zł</td></tr>
+    {% else %}
+    <tr><th>Stawka 1–7 dni</th><td class="right">{{ rental.rate_tier_1_7 }} zł / doba</td></tr>
+    <tr><th>Stawka powyżej 7 dni</th><td class="right">{{ rental.rate_above_7 }} zł / doba</td></tr>
+    <tr><th>Suma przed korektą</th><td class="right">{{ rental.subtotal }} zł</td></tr>
+    {% endif %}
+    {% if rental.discount_pct and rental.discount_pct|float > 0 %}
+    <tr><th>Rabat</th><td class="right">−{{ rental.discount_pct }}%</td></tr>
+    {% endif %}
+    {% if rental.surcharge_pct and rental.surcharge_pct|float > 0 %}
+    <tr><th>Dopłata</th><td class="right">+{{ rental.surcharge_pct }}%</td></tr>
+    {% endif %}
+    {% if rental.overage_rate %}
+    <tr><th>Stawka za nadgodziny</th><td class="right">{{ rental.overage_rate }} zł / {{ "mth" if equipment.tracking_type.value == "mth" else "rbh" }}</td></tr>
+    {% endif %}
+    <tr class="total"><th>Razem netto</th><td class="right">{{ rental.total_netto }} zł</td></tr>
+  </table>
+  <p style="font-size: 8.5pt; color: #666; margin-top: 2mm;">Do kwoty netto doliczony zostanie podatek VAT 23% wg obowiązujących przepisów.</p>
+</div>
+
+<div class="notice">
+  W razie zwrócenia brudnego sprzętu pobierana jest opłata w wysokości <strong>100 zł</strong>.
+  Brak zwrotu wynajmowanego sprzętu w terminie określonym niniejszą umową powoduje, że najem został przedłużony na czas nieokreślony.
+  Najemca w momencie podpisania niniejszej umowy oświadcza, iż zapoznał się z Ogólnymi Warunkami Umowy {{ company.short or company.name }} zawartymi na stronie 2.
+</div>
+
+{% if rental.notes %}
+<div class="section">
+  <div class="section-title">Uwagi</div>
+  <p style="font-size: 10pt; margin: 0;">{{ rental.notes }}</p>
+</div>
+{% endif %}
+
+<div class="sign-grid">
+  <div class="sign-cell">Przedstawiciel Wypożyczalni</div>
+  <div class="sign-cell">Najemca</div>
+</div>
+
+<div class="section" style="margin-top: 14mm;">
+  <div class="section-title">Protokół zdawczo-odbiorczy</div>
+  <table class="protokol">
+    <thead>
+      <tr>
+        <th style="width: 22%;">Data wydania</th>
+        <th>Uwagi</th>
+        <th style="width: 22%;">Podpis Wynajmującego</th>
+        <th style="width: 22%;">Podpis Najemcy</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+  <table class="protokol" style="margin-top: 4mm;">
+    <thead>
+      <tr>
+        <th style="width: 22%;">Data odbioru</th>
+        <th>Uwagi</th>
+        <th style="width: 22%;">Podpis Wynajmującego</th>
+        <th style="width: 22%;">Podpis Najemcy</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+</div>
+
+{# ───────── PAGE 2: WARUNKI UMOWY ───────── #}
+
+<div class="page-break warunki">
+  <h2>Warunki Umowy</h2>
+  <ol>
+    <li>{{ company.name }} wynajmuje do użytkowania na określony w umowie okres sprzęt i wyposażenie dodatkowe.</li>
+    <li>{{ company.name }} udzieli niezbędnych instrukcji co do zasad prawidłowego użytkowania przedmiotu najmu.</li>
+    <li>{{ company.name }} wyda najemcy przedmiot najmu czysty i sprawny pod względem technicznym.</li>
+    <li>Najemca zobowiązuje się użytkować przedmiot najmu z należytą starannością i odpowiadać będzie przed wynajmującym za wszelkie szkody jakie powstaną, w przedmiocie najmu z powodu nie dołożenia tej staranności przez niego samego lub osoby, za które ponosi odpowiedzialność. W szczególności najemca wynajmującemu za wszelkie szkody jakie powstaną, w przedmiocie najmu przed uszkodzeniem, zniszczeniem lub utratą zobowiązany jest należycie zabezpieczyć przedmiot najmu omówionych w punkcie 4, najemca zobowiązany jest do wyrównania strat dotyczących przedmiotu najmu.</li>
+    <li>W przypadku strat dotyczących przedmiotu najmu wymienionej w umowie wartości przedmiotu najmu, jako wyrównania strat w wysokości wymienionej w odpowiedniej części tej wartości przedmiotu najmu {{ company.short or company.name }} pobiera w momencie zwrotu przedmiotu najmu zniszczenia lub utraty, lub w odpowiedniej części lub w wysokości strat dotyczących przedmiotu najmu w momencie zwrotu przedmiotu najmu gwarancję, w przypadku strat dotyczących przedmiotu najmu w gotówce. Kaucja podlega zwrotowi najemcy w momencie zwrotu przedmiotu najmu czystego i w takim stanie, w jakim został on wynajęty z uwzględnieniem pkt. 6 niniejszej umowy.</li>
+    <li>Za zwrot przedmiotu najmu uważa się oddanie jedynie do wypożyczalni przedmiotu najmu czystego w skutek prawidłowego używania. W przeciwnym razie najemca zobowiązany jest do zapłaty czynszu określonego w niniejszej umowie do czasu przywrócenia przez niego przedmiotu najmu do właściwego stanu.</li>
+    <li>Termin użytkowania upływa z chwilą oddania przedmiotu najmu wymaga potwierdzenia przez {{ company.short or company.name }}. Przyjęcie zwróconego przedmiotu najmu może być przedłużony za zgodą {{ company.short or company.name }}.</li>
+    <li>Ustalony czas najmu może być przedłużony za zgodą {{ company.short or company.name }} po przelaniu swoich praw i obowiązków z umowy na osobę trzecią.</li>
+    <li>Najemca nie może bez zgody {{ company.short or company.name }} przelać swoich praw i obowiązków z umowy w momencie zwrócenia przedmiotu najmu.</li>
+    <li>Czynsz, uiszczony bez czasu i transportu wynajmującego koszty tego transportu pokrywa najemca.</li>
+    <li>W przypadku korzystania czynszu za najem.</li>
+    <li>Najemca oświadcza, że zapoznał się i zrozumiał instrukcję obsługi i eksploatacji przedmiotu najmu. Skutki uszkodzeń, awarii i strat powstałe przez nie przestrzeganie w/w instrukcji oraz zasad bhp będą obciążały najemcę.</li>
+    <li>{{ company.short or company.name }} zastrzega sobie prawo w określeniu oceny technicznej i odpowiedzialności za uszkodzenia najemcy. {{ company.short or company.name }} może wyrazić zgodę na przekazanie sprawy do zwróconego przez najemcę przedmiotu najmu (instytucji), uzgodnionego pomiędzy stronami i respektować wyniki tej ekspertyzy neutralnego eksperta lub instytucji, uzgodnionego pomiędzy stronami i respektować wyniki tej odpowiedniego ekspertyzy. Koszt tej ekspertyzy pokrywa strona przeciwko której wydano orzeczenie.</li>
+    <li>Odpowiedzialność za szkody wobec osób trzecich powstałe na skutek prac prowadzonych przy użyciu przedmiotu najmu przez najemcę ponosi najemca.</li>
+  </ol>
+
+  <div class="warunki-foot">
+    <div>{{ company.name }}{% if company.nip %} · NIP {{ company.nip }}{% endif %}</div>
+    <div>Umowa nr {{ rental.id }} · {{ rental.created_at.strftime("%d.%m.%Y") if rental.created_at else "" }}</div>
+  </div>
+</div>
+
+</body>
+</html>
