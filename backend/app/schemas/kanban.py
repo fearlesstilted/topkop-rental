@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,6 +26,10 @@ class CardCreate(BaseModel):
     rental_id: int | None = None
     title: str
     checklist: list[ChecklistItemCreate] = Field(default_factory=list)
+    priority: Literal["low", "normal", "high", "urgent"] = "normal"
+    due_date: date | None = None
+    source: str = "manual"
+    assigned_worker: str | None = None
     notes: str | None = None
 
 
@@ -34,6 +39,9 @@ class CardUpdate(BaseModel):
     sort_order: int | None = None
     assigned_user_id: int | None = None
     assigned_worker: str | None = None
+    priority: Literal["low", "normal", "high", "urgent"] | None = None
+    due_date: date | None = None
+    source: str | None = None
     notes: str | None = None
 
 
@@ -47,7 +55,14 @@ class CardOut(BaseModel):
     sort_order: int
     assigned_user_id: int | None
     assigned_worker: str | None
+    priority: str
+    due_date: date | None
+    source: str
     notes: str | None
     created_at: datetime
     updated_at: datetime
     checklist: list[ChecklistItemOut] = Field(default_factory=list)
+    equipment_code: str | None = None
+    equipment_name: str | None = None
+    rental_client_name: str | None = None
+    rental_status: str | None = None

@@ -226,6 +226,9 @@ async function createServiceCard() {
       equipment_id: serviceTarget.value.equipment_id,
       rental_id: serviceTarget.value.id,
       title,
+      priority: 'high',
+      due_date: serviceTarget.value.end_date,
+      source: 'rental_return',
       checklist: [
         { label: 'Sprawdzić stan techniczny', sort_order: 0 },
         { label: 'Nasmarować', sort_order: 1 },

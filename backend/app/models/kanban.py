@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,6 +23,9 @@ class KanbanCard(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     assigned_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     assigned_worker: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    priority: Mapped[str] = mapped_column(String(16), default="normal", nullable=False)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    source: Mapped[str] = mapped_column(String(32), default="manual", nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

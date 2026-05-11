@@ -114,7 +114,7 @@ interface Tile {
 const tiles = computed<Tile[]>(() => {
   if (role.value === 'mechanik') {
     return [
-      { to: '/kanban',    label: 'Warsztat',    desc: 'Karty serwisowe · przydziel ludzi', icon: 'view_kanban',  bg: 'rgba(217,119,6,0.1)', iconColor: '#d97706', wide: true },
+      { to: '/kanban',    label: 'Tablica',     desc: 'Zwroty · serwis · gotowość', icon: 'view_kanban',  bg: 'rgba(217,119,6,0.1)', iconColor: '#d97706', wide: true },
       { to: '/equipment', label: 'Park maszyn', desc: 'Status sprzętu',                   icon: 'construction', bg: 'rgba(22,163,74,0.1)', iconColor: '#16a34a' },
     ]
   }
@@ -124,7 +124,7 @@ const tiles = computed<Tile[]>(() => {
       { to: '/rentals',         label: 'Umowy',            desc: 'Wszystkie umowy',   icon: 'description',   bg: 'rgba(3,105,161,0.1)',  iconColor: '#0369a1' },
       { to: '/inspections/new', label: 'Nowa inspekcja',   desc: 'Wydanie / zwrot',   icon: 'photo_camera',  bg: 'rgba(217,119,6,0.1)',  iconColor: '#d97706' },
       { to: '/inspections',     label: 'Protokoły',        desc: 'Historia inspekcji', icon: 'assignment',   bg: 'rgba(99,102,241,0.1)', iconColor: '#6366f1' },
-      { to: '/kanban',          label: 'Warsztat',         desc: 'Kanban serwisowy',  icon: 'view_kanban',   bg: 'rgba(202,138,4,0.1)',  iconColor: '#ca8a04' },
+      { to: '/kanban',          label: 'Tablica',          desc: 'Operacje sprzętu',  icon: 'view_kanban',   bg: 'rgba(202,138,4,0.1)',  iconColor: '#ca8a04' },
       { to: '/equipment',       label: 'Park maszyn',      desc: 'Sprzęt i statusy',  icon: 'construction',  bg: 'rgba(22,163,74,0.1)',  iconColor: '#16a34a' },
     ]
   }
@@ -134,7 +134,7 @@ const tiles = computed<Tile[]>(() => {
     { to: '/rentals',         label: 'Umowy',            desc: 'Wszystkie umowy',   icon: 'description',   bg: 'rgba(3,105,161,0.1)',  iconColor: '#0369a1' },
     { to: '/inspections/new', label: 'Nowa inspekcja',   desc: 'Wydanie / zwrot',   icon: 'photo_camera',  bg: 'rgba(217,119,6,0.1)',  iconColor: '#d97706' },
     { to: '/inspections',     label: 'Protokoły',        desc: 'Historia inspekcji', icon: 'assignment',   bg: 'rgba(99,102,241,0.1)', iconColor: '#6366f1' },
-    { to: '/kanban',          label: 'Warsztat',         desc: 'Podgląd serwisu',   icon: 'view_kanban',   bg: 'rgba(202,138,4,0.1)',  iconColor: '#ca8a04' },
+    { to: '/kanban',          label: 'Tablica',          desc: 'Operacje sprzętu',  icon: 'view_kanban',   bg: 'rgba(202,138,4,0.1)',  iconColor: '#ca8a04' },
     { to: '/equipment',       label: 'Park maszyn',      desc: 'Sprzęt i statusy',  icon: 'construction',  bg: 'rgba(22,163,74,0.1)',  iconColor: '#16a34a' },
   ]
 })

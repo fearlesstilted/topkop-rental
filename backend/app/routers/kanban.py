@@ -7,13 +7,50 @@ from sqlalchemy.orm import selectinload
 
 from app.core.deps import get_current_user, require_roles
 from app.database import get_session
-from app.models import Equipment, KanbanCard, KanbanChecklistItem, User, UserRole
+from app.models import Equipment, KanbanCard, KanbanChecklistItem, Rental, User, UserRole
 from app.models.enums import KanbanColumn
 from app.schemas.kanban import CardCreate, CardOut, CardUpdate
 from app.services.notification_service import notify_mechaniks_new_card
 from app.services.ws_manager import broadcaster
 
 router = APIRouter()
+
+
+async def _serialize_cards(
+    session: AsyncSession,
+    cards: list[KanbanCard],
+) -> list[CardOut]:
+    equipment_ids = {card.equipment_id for card in cards}
+    rental_ids = {card.rental_id for card in cards if card.rental_id is not None}
+
+    equipment_map: dict[int, Equipment] = {}
+    if equipment_ids:
+        equipment_result = await session.execute(
+            select(Equipment).where(Equipment.id.in_(equipment_ids))
+        )
+        equipment_map = {item.id: item for item in equipment_result.scalars()}
+
+    rental_map: dict[int, Rental] = {}
+    if rental_ids:
+        rental_result = await session.execute(select(Rental).where(Rental.id.in_(rental_ids)))
+        rental_map = {item.id: item for item in rental_result.scalars()}
+
+    output: list[CardOut] = []
+    for card in cards:
+        equipment = equipment_map.get(card.equipment_id)
+        rental = rental_map.get(card.rental_id) if card.rental_id is not None else None
+        output.append(
+            CardOut.model_validate(card).model_copy(
+                update={
+                    "equipment_code": equipment.code if equipment else None,
+                    "equipment_name": equipment.name if equipment else None,
+                    "rental_client_name": rental.client_name if rental else None,
+                    "rental_status": rental.status.value if rental else None,
+                }
+            )
+        )
+
+    return output
 
 
 async def _card_with_checklist(session: AsyncSession, card_id: int) -> KanbanCard:
@@ -50,13 +87,14 @@ def _auto_advance_column(card: KanbanCard) -> bool:
 async def list_cards(
     session: AsyncSession = Depends(get_session),
     _: object = Depends(get_current_user),
-) -> list[KanbanCard]:
+) -> list[CardOut]:
     result = await session.execute(
         select(KanbanCard)
         .options(selectinload(KanbanCard.checklist))
         .order_by(KanbanCard.sort_order, KanbanCard.id)
     )
-    return result.scalars().all()
+    cards = result.scalars().all()
+    return await _serialize_cards(session, cards)
 
 
 @router.post("", response_model=CardOut, status_code=status.HTTP_201_CREATED)
@@ -64,14 +102,22 @@ async def create_card(
     payload: CardCreate,
     session: AsyncSession = Depends(get_session),
     _: object = Depends(get_current_user),
-) -> KanbanCard:
+) -> CardOut:
     equipment = await session.get(Equipment, payload.equipment_id)
     if not equipment:
         raise HTTPException(status_code=400, detail="Unknown equipment")
+    if payload.rental_id is not None:
+        rental = await session.get(Rental, payload.rental_id)
+        if not rental:
+            raise HTTPException(status_code=400, detail="Unknown rental")
     card = KanbanCard(
         equipment_id=payload.equipment_id,
         rental_id=payload.rental_id,
         title=payload.title,
+        priority=payload.priority,
+        due_date=payload.due_date,
+        source=payload.source,
+        assigned_worker=payload.assigned_worker,
         notes=payload.notes,
     )
     for idx, item in enumerate(payload.checklist):
@@ -84,7 +130,7 @@ async def create_card(
 
     await notify_mechaniks_new_card(session, card.title, equipment.code)
     await broadcaster.broadcast("card.created", {"id": card.id, "column": card.column.value})
-    return card
+    return (await _serialize_cards(session, [card]))[0]
 
 
 @router.patch("/{card_id}", response_model=CardOut)
@@ -93,7 +139,7 @@ async def update_card(
     payload: CardUpdate,
     session: AsyncSession = Depends(get_session),
     _: object = Depends(get_current_user),
-) -> KanbanCard:
+) -> CardOut:
     card = await _card_with_checklist(session, card_id)
     data = payload.model_dump(exclude_unset=True)
 
@@ -109,7 +155,7 @@ async def update_card(
     await session.commit()
     card = await _card_with_checklist(session, card_id)
     await broadcaster.broadcast("card.updated", {"id": card.id, "column": card.column.value})
-    return card
+    return (await _serialize_cards(session, [card]))[0]
 
 
 @router.post("/{card_id}/checklist/{item_id}/toggle", response_model=CardOut)
@@ -119,7 +165,7 @@ async def toggle_checklist(
     done: bool,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
-) -> KanbanCard:
+) -> CardOut:
     item = await session.get(KanbanChecklistItem, item_id)
     if not item or item.card_id != card_id:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -144,7 +190,7 @@ async def toggle_checklist(
             "column": card.column.value,
         },
     )
-    return card
+    return (await _serialize_cards(session, [card]))[0]
 
 
 @router.delete(
