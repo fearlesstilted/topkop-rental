@@ -34,12 +34,10 @@ Run the backend:
 
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-alembic upgrade head
-python -m app.cli seed
-uvicorn app.main:app --reload --port 8000
+make install
+make migrate
+make seed
+make dev
 ```
 
 Run the frontend:
@@ -62,7 +60,7 @@ Docker Compose starts PostgreSQL, applies migrations, seeds initial data, and ru
 
 ## Local PIN Setup
 
-The repository does not include default login PIN codes. Before running `python -m app.cli seed`, create `backend/.env` from `backend/.env.example` and set local values:
+The repository does not include default login PIN codes. Before running `make seed`, create `backend/.env` from `backend/.env.example` and set local values:
 
 ```env
 PIN_DEFAULT_BIURO=your-local-biuro-pin
@@ -71,6 +69,35 @@ PIN_DEFAULT_MANAGER=your-local-manager-pin
 ```
 
 If these variables are missing, seed will skip user creation.
+
+## Backend Troubleshooting
+
+If `python -m app.cli seed` fails with `ModuleNotFoundError: No module named 'asyncpg'` or `ModuleNotFoundError: No module named 'sqlalchemy'`, the command is using the wrong Python interpreter. This can happen when conda/base is active or zsh keeps a cached `python` path.
+
+Use the Make targets or call the backend virtualenv explicitly:
+
+```bash
+cd backend
+make install
+make migrate
+make seed
+```
+
+Equivalent direct commands:
+
+```bash
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m alembic upgrade head
+.venv/bin/python -m app.cli seed
+```
+
+To confirm the interpreter is correct:
+
+```bash
+.venv/bin/python -c "import sys, asyncpg; print(sys.executable); print(asyncpg.__version__)"
+```
+
+The printed path must point to `backend/.venv/bin/python`.
 
 ## Project Structure
 
@@ -87,9 +114,8 @@ Backend:
 
 ```bash
 cd backend
-pytest
-python -m compileall app tests
-ruff check app tests
+make check
+.venv/bin/python -m compileall app tests
 ```
 
 Frontend:
