@@ -329,6 +329,13 @@
 <div class="section">
   <div class="section-title">Wynagrodzenie (netto)</div>
   <table class="clean">
+    {% if rental.billing_mode.value == "hourly" %}
+    <tr><th>Model rozliczenia</th><td class="right">Najem z operatorem / rozliczenie godzinowe</td></tr>
+    <tr><th>Liczba godzin</th><td class="right">{{ rental.operator_hours or "0.00" }} h</td></tr>
+    <tr><th>Stawka godzinowa</th><td class="right">{{ rental.hourly_rate or "0.00" }} zł / h</td></tr>
+    <tr><th>Suma pracy operatora</th><td class="right">{{ rental.subtotal }} zł</td></tr>
+    {% else %}
+    <tr><th>Model rozliczenia</th><td class="right">Najem dobowy{% if rental.operator_included %} z operatorem{% endif %}</td></tr>
     {% if rental.flat_rate %}
     <tr><th>Stawka dobowa</th><td class="right">{{ rental.rate_tier_1_7 }} zł</td></tr>
     <tr><th>{{ rental.rental_days }} × {{ rental.rate_tier_1_7 }} zł</th><td class="right">{{ rental.subtotal }} zł</td></tr>
@@ -336,6 +343,7 @@
     <tr><th>Stawka 1–7 dni</th><td class="right">{{ rental.rate_tier_1_7 }} zł / doba</td></tr>
     <tr><th>Stawka powyżej 7 dni</th><td class="right">{{ rental.rate_above_7 }} zł / doba</td></tr>
     <tr><th>Suma przed korektą</th><td class="right">{{ rental.subtotal }} zł</td></tr>
+    {% endif %}
     {% endif %}
     {% if rental.discount_pct and rental.discount_pct|float > 0 %}
     <tr><th>Rabat</th><td class="right">−{{ rental.discount_pct }}%</td></tr>
@@ -345,6 +353,12 @@
     {% endif %}
     {% if rental.overage_rate %}
     <tr><th>Stawka za nadgodziny</th><td class="right">{{ rental.overage_rate }} zł / {{ "mth" if equipment.tracking_type.value == "mth" else "rbh" }}</td></tr>
+    {% endif %}
+    {% if rental.transport_cost and rental.transport_cost|float > 0 %}
+    <tr>
+      <th>Transport{% if rental.transport_description %}<br><span style="font-weight:400; color:#777;">{{ rental.transport_description }}</span>{% endif %}</th>
+      <td class="right">{{ rental.transport_cost }} zł</td>
+    </tr>
     {% endif %}
     <tr class="total"><th>Razem netto</th><td class="right">{{ rental.total_netto }} zł</td></tr>
   </table>

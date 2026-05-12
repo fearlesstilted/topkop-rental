@@ -14,7 +14,7 @@ from app.schemas.rental import (
     RentalOut,
     RentalUpdate,
 )
-from app.services.calendar_service import calculate_rental_days, calculate_tiered_total
+from app.services.calendar_service import calculate_rental_days, calculate_rental_pricing
 from app.services.pdf_service import render_rental_contract
 
 _STATUS_TRANSITIONS: dict[RentalStatus, set[RentalStatus]] = {
@@ -31,6 +31,10 @@ _RECALCULATED_FIELDS = {
     "rate_tier_1_7",
     "rate_above_7",
     "flat_rate",
+    "billing_mode",
+    "operator_hours",
+    "hourly_rate",
+    "transport_cost",
     "discount_pct",
     "surcharge_pct",
 }
@@ -48,14 +52,21 @@ async def calculate(
         weekdays_only=payload.weekdays_only,
         align_to_monday=payload.align_to_monday,
     )
-    result = calculate_tiered_total(
-        days=days,
-        rate_tier_1_7=payload.rate_tier_1_7,
-        rate_above_7=payload.rate_above_7,
-        discount_pct=payload.discount_pct,
-        surcharge_pct=payload.surcharge_pct,
-        flat_rate=payload.flat_rate,
-    )
+    try:
+        result = calculate_rental_pricing(
+            days=days,
+            rate_tier_1_7=payload.rate_tier_1_7,
+            rate_above_7=payload.rate_above_7,
+            billing_mode=payload.billing_mode.value,
+            operator_hours=payload.operator_hours,
+            hourly_rate=payload.hourly_rate,
+            transport_cost=payload.transport_cost,
+            discount_pct=payload.discount_pct,
+            surcharge_pct=payload.surcharge_pct,
+            flat_rate=payload.flat_rate,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return RentalCalcResponse(**result.as_dict())
 
 
@@ -99,14 +110,21 @@ async def create_rental(
         weekdays_only=payload.weekdays_only,
         align_to_monday=payload.align_to_monday,
     )
-    calc = calculate_tiered_total(
-        days=days,
-        rate_tier_1_7=payload.rate_tier_1_7,
-        rate_above_7=payload.rate_above_7,
-        discount_pct=payload.discount_pct,
-        surcharge_pct=payload.surcharge_pct,
-        flat_rate=payload.flat_rate,
-    )
+    try:
+        calc = calculate_rental_pricing(
+            days=days,
+            rate_tier_1_7=payload.rate_tier_1_7,
+            rate_above_7=payload.rate_above_7,
+            billing_mode=payload.billing_mode.value,
+            operator_hours=payload.operator_hours,
+            hourly_rate=payload.hourly_rate,
+            transport_cost=payload.transport_cost,
+            discount_pct=payload.discount_pct,
+            surcharge_pct=payload.surcharge_pct,
+            flat_rate=payload.flat_rate,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     rental = Rental(
         equipment_id=payload.equipment_id,
@@ -121,8 +139,14 @@ async def create_rental(
         rate_tier_1_7=payload.rate_tier_1_7,
         rate_above_7=payload.rate_above_7,
         flat_rate=payload.flat_rate,
+        billing_mode=payload.billing_mode,
+        operator_included=payload.operator_included,
+        operator_hours=payload.operator_hours,
+        hourly_rate=payload.hourly_rate,
         daily_limit=payload.daily_limit,
         overage_rate=payload.overage_rate,
+        transport_cost=payload.transport_cost,
+        transport_description=payload.transport_description,
         discount_pct=payload.discount_pct,
         surcharge_pct=payload.surcharge_pct,
         rental_days=days,
@@ -163,14 +187,21 @@ async def update_rental(
             weekdays_only=item.weekdays_only,
             align_to_monday=item.align_to_monday,
         )
-        calc = calculate_tiered_total(
-            days=days,
-            rate_tier_1_7=item.rate_tier_1_7,
-            rate_above_7=item.rate_above_7,
-            discount_pct=item.discount_pct,
-            surcharge_pct=item.surcharge_pct,
-            flat_rate=item.flat_rate,
-        )
+        try:
+            calc = calculate_rental_pricing(
+                days=days,
+                rate_tier_1_7=item.rate_tier_1_7,
+                rate_above_7=item.rate_above_7,
+                billing_mode=item.billing_mode.value,
+                operator_hours=item.operator_hours,
+                hourly_rate=item.hourly_rate,
+                transport_cost=item.transport_cost,
+                discount_pct=item.discount_pct,
+                surcharge_pct=item.surcharge_pct,
+                flat_rate=item.flat_rate,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         item.rental_days = days
         item.subtotal = calc.subtotal
         item.total_netto = calc.total_netto

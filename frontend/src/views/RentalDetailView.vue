@@ -69,22 +69,49 @@
       <!-- Rates -->
       <q-card flat bordered>
         <q-card-section>
-          <div class="field-label q-mb-md">Stawki</div>
-          <div class="row q-col-gutter-md">
-            <div class="col-6 col-sm-3">
+          <div class="field-label q-mb-md">Wycena</div>
+          <q-option-group
+            v-model="form.billing_mode"
+            :options="billingModeOptions"
+            color="primary"
+            inline
+            :disable="!editable"
+            class="q-mb-md"
+          />
+          <div v-if="form.billing_mode === 'daily'" class="row q-col-gutter-md">
+            <div class="col-6 col-sm-4">
               <q-input v-model.number="form.rate_tier_1_7" label="Stawka 1–7 dni (zł)" type="number" dense :readonly="!editable" />
             </div>
-            <div class="col-6 col-sm-3">
+            <div class="col-6 col-sm-4">
               <q-input v-model.number="form.rate_above_7" label="Stawka >7 dni (zł)" type="number" dense :readonly="!editable" />
             </div>
+            <div class="col-12 col-sm-4">
+              <q-checkbox v-model="form.flat_rate" label="Jedna stawka" dense :disable="!editable" />
+            </div>
+          </div>
+          <div v-else class="row q-col-gutter-md">
+            <div class="col-12 col-sm-4">
+              <q-checkbox v-model="form.operator_included" label="Operator w usłudze" dense :disable="!editable" />
+            </div>
+            <div class="col-6 col-sm-4">
+              <q-input v-model.number="form.operator_hours" label="Godziny" type="number" step="0.25" dense :readonly="!editable" />
+            </div>
+            <div class="col-6 col-sm-4">
+              <q-input v-model.number="form.hourly_rate" label="Stawka godzinowa" type="number" step="0.01" dense :readonly="!editable" />
+            </div>
+          </div>
+          <div class="row q-col-gutter-md q-mt-sm">
             <div class="col-6 col-sm-2">
               <q-input v-model.number="form.discount_pct" label="Rabat %" type="number" dense :readonly="!editable" />
             </div>
             <div class="col-6 col-sm-2">
               <q-input v-model.number="form.surcharge_pct" label="Dopłata %" type="number" dense :readonly="!editable" />
             </div>
-            <div class="col-12 col-sm-2">
-              <q-checkbox v-model="form.flat_rate" label="Flat rate" dense :disable="!editable" />
+            <div class="col-12 col-sm-4">
+              <q-input v-model.number="form.transport_cost" label="Transport netto" type="number" step="0.01" dense :readonly="!editable" />
+            </div>
+            <div class="col-12 col-sm-4">
+              <q-input v-model="form.transport_description" label="Opis transportu" dense :readonly="!editable" />
             </div>
           </div>
         </q-card-section>
@@ -104,6 +131,10 @@
             <div>
               <div class="text-caption text-grey-6">Dni najmu</div>
               <div class="text-h6">{{ rental.rental_days }} dni</div>
+            </div>
+            <div>
+              <div class="text-caption text-grey-6">Model</div>
+              <div class="text-h6">{{ rental.billing_mode === 'hourly' ? 'Godzinowo' : 'Dobowo' }}</div>
             </div>
             <div class="text-right">
               <div class="text-caption text-grey-6">Wartość netto</div>
@@ -151,6 +182,11 @@ const billingOptions = [
   { value: 'tk_spzoo',   label: 'TK Sp. z o.o.' },
 ]
 
+const billingModeOptions = [
+  { value: 'daily', label: 'Dobowo' },
+  { value: 'hourly', label: 'Godzinowo z operatorem' },
+]
+
 function statusColor(s?: string) {
   return { draft: 'grey-5', active: 'positive', returned: 'blue-grey-5', cancelled: 'negative' }[s ?? ''] ?? 'grey'
 }
@@ -172,6 +208,12 @@ function populateForm(r: any) {
     rate_tier_1_7: r.rate_tier_1_7,
     rate_above_7: r.rate_above_7,
     flat_rate: r.flat_rate,
+    billing_mode: r.billing_mode,
+    operator_included: r.operator_included,
+    operator_hours: r.operator_hours,
+    hourly_rate: r.hourly_rate,
+    transport_cost: r.transport_cost,
+    transport_description: r.transport_description ?? '',
     discount_pct: r.discount_pct,
     surcharge_pct: r.surcharge_pct,
     notes: r.notes ?? '',
@@ -191,6 +233,11 @@ async function save() {
     if (!payload.client_nip) payload.client_nip = null
     if (!payload.client_address) payload.client_address = null
     if (!payload.client_phone) payload.client_phone = null
+    if (payload.billing_mode !== 'hourly') {
+      payload.operator_hours = null
+      payload.hourly_rate = null
+    }
+    if (!payload.transport_description) payload.transport_description = null
     if (!payload.notes) payload.notes = null
     const { data } = await api.patch(`/rentals/${route.params.id}`, payload)
     rental.value = data

@@ -29,6 +29,11 @@ class RentalStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class RentalBillingMode(StrEnum):
+    DAILY = "daily"
+    HOURLY = "hourly"
+
+
 class InspectionType(StrEnum):
     PICKUP = "pickup"
     RETURN = "return"

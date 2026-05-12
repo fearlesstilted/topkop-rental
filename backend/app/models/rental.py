@@ -19,7 +19,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from app.models.enums import BillingEntity, RentalStatus
+from app.models.enums import BillingEntity, RentalBillingMode, RentalStatus
 
 if TYPE_CHECKING:
     from app.models.equipment import Equipment
@@ -55,8 +55,24 @@ class Rental(Base):
         nullable=False,
         comment="True = не применять tier, всегда rate_tier_1_7",
     )
+    billing_mode: Mapped[RentalBillingMode] = mapped_column(
+        SAEnum(
+            RentalBillingMode,
+            name="rental_billing_mode",
+            values_callable=lambda o: [e.value for e in o],
+        ),
+        default=RentalBillingMode.DAILY,
+        nullable=False,
+    )
+    operator_included: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    operator_hours: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    hourly_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     daily_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
     overage_rate: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    transport_cost: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), default=Decimal("0"), nullable=False
+    )
+    transport_description: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     discount_pct: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), default=Decimal("0"), nullable=False

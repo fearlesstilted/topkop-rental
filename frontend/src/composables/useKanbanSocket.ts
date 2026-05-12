@@ -11,6 +11,14 @@ const HEARTBEAT_MS = 30_000
 const RECONNECT_MS = 3_000
 const POLICY_VIOLATION_CLOSE_CODE = 1008
 
+function resolveSocketUrl(token: string): string {
+  const configured = import.meta.env.VITE_WS_BASE_URL
+  if (configured) return `${configured.replace(/\/$/, '')}/ws/kanban?token=${encodeURIComponent(token)}`
+
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws'
+  return `${proto}://${location.host}/ws/kanban?token=${encodeURIComponent(token)}`
+}
+
 function parseSocketEvent(data: string): KanbanSocketEvent | null {
   try {
     const parsed = JSON.parse(data) as Partial<KanbanSocketEvent>
@@ -34,8 +42,7 @@ export function useKanbanSocket(onMessage: (evt: KanbanSocketEvent) => void) {
   function connect() {
     const token = auth.token
     if (!token) return
-    const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-    ws = new WebSocket(`${proto}://${location.host}/ws/kanban?token=${encodeURIComponent(token)}`)
+    ws = new WebSocket(resolveSocketUrl(token))
 
     ws.onopen = () => {
       connected.value = true

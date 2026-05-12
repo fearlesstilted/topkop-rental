@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Literal
 
 TIER_BREAKPOINT_DAYS = 7
 CENTS = Decimal("0.01")
@@ -47,8 +48,48 @@ class CalculationResult:
         }
 
 
+@dataclass(frozen=True)
+class PricingResult:
+    days: int
+    tier1_days: int
+    tier2_days: int
+    tier1_amount: Decimal
+    tier2_amount: Decimal
+    subtotal: Decimal
+    adjustment_pct: Decimal
+    adjustment_amount: Decimal
+    rental_amount: Decimal
+    billable_quantity: Decimal
+    transport_cost: Decimal
+    total_netto: Decimal
+    billing_mode: Literal["daily", "hourly"]
+
+    def as_dict(self) -> dict:
+        return {
+            "days": self.days,
+            "tier1_days": self.tier1_days,
+            "tier2_days": self.tier2_days,
+            "tier1_amount": str(self.tier1_amount),
+            "tier2_amount": str(self.tier2_amount),
+            "subtotal": str(self.subtotal),
+            "adjustment_pct": str(self.adjustment_pct),
+            "adjustment_amount": str(self.adjustment_amount),
+            "rental_amount": str(self.rental_amount),
+            "billable_quantity": str(self.billable_quantity),
+            "transport_cost": str(self.transport_cost),
+            "total_netto": str(self.total_netto),
+            "billing_mode": self.billing_mode,
+        }
+
+
 def _quantize(value: Decimal) -> Decimal:
     return value.quantize(CENTS, rounding=ROUND_HALF_UP)
+
+
+def _non_negative(value: Decimal, field_name: str) -> Decimal:
+    if value < 0:
+        raise ValueError(f"{field_name} must be >= 0")
+    return value
 
 
 def calculate_rental_days(
@@ -115,6 +156,75 @@ def calculate_tiered_total(
         adjustment_pct=adjustment_pct,
         adjustment_amount=adjustment_amount,
         total_netto=total_netto,
+    )
+
+
+def calculate_rental_pricing(
+    *,
+    days: int,
+    rate_tier_1_7: Decimal,
+    rate_above_7: Decimal,
+    billing_mode: Literal["daily", "hourly"] = "daily",
+    operator_hours: Decimal | None = None,
+    hourly_rate: Decimal | None = None,
+    transport_cost: Decimal = Decimal("0"),
+    discount_pct: Decimal = Decimal("0"),
+    surcharge_pct: Decimal = Decimal("0"),
+    flat_rate: bool = False,
+) -> PricingResult:
+    transport = _quantize(_non_negative(transport_cost, "transport_cost"))
+
+    if billing_mode == "daily":
+        daily = calculate_tiered_total(
+            days=days,
+            rate_tier_1_7=rate_tier_1_7,
+            rate_above_7=rate_above_7,
+            discount_pct=discount_pct,
+            surcharge_pct=surcharge_pct,
+            flat_rate=flat_rate,
+        )
+        return PricingResult(
+            days=daily.days,
+            tier1_days=daily.tier1_days,
+            tier2_days=daily.tier2_days,
+            tier1_amount=daily.tier1_amount,
+            tier2_amount=daily.tier2_amount,
+            subtotal=daily.subtotal,
+            adjustment_pct=daily.adjustment_pct,
+            adjustment_amount=daily.adjustment_amount,
+            rental_amount=daily.total_netto,
+            billable_quantity=Decimal(daily.days),
+            transport_cost=transport,
+            total_netto=_quantize(daily.total_netto + transport),
+            billing_mode="daily",
+        )
+
+    if billing_mode != "hourly":
+        raise ValueError("billing_mode must be daily or hourly")
+    if operator_hours is None or hourly_rate is None:
+        raise ValueError("operator_hours and hourly_rate are required for hourly billing")
+
+    hours = _quantize(_non_negative(operator_hours, "operator_hours"))
+    rate = _quantize(_non_negative(hourly_rate, "hourly_rate"))
+    subtotal = _quantize(hours * rate)
+    adjustment_pct = surcharge_pct - discount_pct
+    adjustment_amount = _quantize(subtotal * adjustment_pct / Decimal("100"))
+    rental_amount = _quantize(subtotal + adjustment_amount)
+
+    return PricingResult(
+        days=days,
+        tier1_days=0,
+        tier2_days=0,
+        tier1_amount=Decimal("0.00"),
+        tier2_amount=Decimal("0.00"),
+        subtotal=subtotal,
+        adjustment_pct=adjustment_pct,
+        adjustment_amount=adjustment_amount,
+        rental_amount=rental_amount,
+        billable_quantity=hours,
+        transport_cost=transport,
+        total_netto=_quantize(rental_amount + transport),
+        billing_mode="hourly",
     )
 
 

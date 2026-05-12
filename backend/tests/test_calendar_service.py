@@ -6,6 +6,7 @@ import pytest
 from app.services.calendar_service import (
     calculate_overage,
     calculate_rental_days,
+    calculate_rental_pricing,
     calculate_tiered_total,
 )
 
@@ -114,6 +115,44 @@ class TestCalculateTieredTotal:
             rate_above_7=Decimal("450"),
         )
         assert result.total_netto == Decimal("0.00")
+
+
+class TestCalculateRentalPricing:
+    def test_daily_pricing_adds_transport_after_adjustment(self):
+        result = calculate_rental_pricing(
+            days=3,
+            rate_tier_1_7=Decimal("500"),
+            rate_above_7=Decimal("450"),
+            transport_cost=Decimal("240"),
+            discount_pct=Decimal("10"),
+        )
+        assert result.rental_amount == Decimal("1350.00")
+        assert result.transport_cost == Decimal("240.00")
+        assert result.total_netto == Decimal("1590.00")
+        assert result.billing_mode == "daily"
+
+    def test_hourly_operator_pricing(self):
+        result = calculate_rental_pricing(
+            days=1,
+            rate_tier_1_7=Decimal("500"),
+            rate_above_7=Decimal("450"),
+            billing_mode="hourly",
+            operator_hours=Decimal("7.5"),
+            hourly_rate=Decimal("180"),
+            transport_cost=Decimal("300"),
+        )
+        assert result.billable_quantity == Decimal("7.50")
+        assert result.subtotal == Decimal("1350.00")
+        assert result.total_netto == Decimal("1650.00")
+
+    def test_hourly_requires_hours_and_rate(self):
+        with pytest.raises(ValueError):
+            calculate_rental_pricing(
+                days=1,
+                rate_tier_1_7=Decimal("500"),
+                rate_above_7=Decimal("450"),
+                billing_mode="hourly",
+            )
 
 
 class TestCalculateOverage:
