@@ -26,7 +26,5 @@ services:
         sync: false
       - key: PIN_DEFAULT_BIURO
         sync: false
-      - key: PIN_DEFAULT_MECHANIK
-        sync: false
       - key: PIN_DEFAULT_MANAGER
         sync: false

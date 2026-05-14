@@ -151,7 +151,7 @@
           <q-btn flat label="Anuluj" @click="resetForm" />
         </template>
         <template v-else>
-          <q-btn v-if="rental.status !== 'returned' && rental.status !== 'cancelled'"
+          <q-btn v-if="canOperate && rental.status !== 'returned' && rental.status !== 'cancelled'"
             outline color="primary" icon="edit" label="Edytuj" @click="editable = true" />
         </template>
         <q-btn outline color="deep-orange" icon="picture_as_pdf" label="PDF" @click="openPdf" />
@@ -169,13 +169,16 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { api, errMsg } from '@/lib/api'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const $q = useQuasar()
+const auth = useAuthStore()
 const rental = ref<any>(null)
 const editable = ref(false)
 const saving = ref(false)
 const form = ref<any>({})
+const canOperate = computed(() => auth.user?.role === 'biuro')
 
 const billingOptions = [
   { value: 'topkop_jdg', label: '„TOP KOP Krzysztof Świtaj"' },

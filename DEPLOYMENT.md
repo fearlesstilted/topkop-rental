@@ -36,7 +36,6 @@ APP_ENV=production
 SECRET_KEY=change-me
 CORS_ORIGINS=https://your-frontend.pages.dev
 PIN_DEFAULT_BIURO=
-PIN_DEFAULT_MECHANIK=
 PIN_DEFAULT_MANAGER=
 ```
 

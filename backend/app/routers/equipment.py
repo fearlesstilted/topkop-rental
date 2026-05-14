@@ -32,7 +32,7 @@ async def list_categories(
 @router.patch(
     "/categories/{cat_id}",
     response_model=CategoryOut,
-    dependencies=[Depends(require_roles(UserRole.MANAGER, UserRole.BIURO))],
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
 )
 async def update_category(
     cat_id: int,
@@ -53,7 +53,7 @@ async def update_category(
     "/categories",
     response_model=CategoryOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(UserRole.MANAGER, UserRole.BIURO))],
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
 )
 async def create_category(
     payload: CategoryCreate,
@@ -100,7 +100,7 @@ async def get_equipment(
     "",
     response_model=EquipmentOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(UserRole.MANAGER, UserRole.BIURO))],
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
 )
 async def create_equipment(
     payload: EquipmentCreate,
@@ -122,7 +122,7 @@ async def create_equipment(
 @router.patch(
     "/{equipment_id}",
     response_model=EquipmentOut,
-    dependencies=[Depends(require_roles(UserRole.MANAGER, UserRole.BIURO))],
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
 )
 async def update_equipment(
     equipment_id: int,
@@ -142,7 +142,7 @@ async def update_equipment(
 @router.delete(
     "/{equipment_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_roles(UserRole.MANAGER))],
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
 )
 async def delete_equipment(equipment_id: int, session: AsyncSession = Depends(get_session)) -> None:
     item = await session.get(Equipment, equipment_id)

@@ -108,7 +108,6 @@ Create or update `backend/.env`:
 
 ```env
 PIN_DEFAULT_BIURO=1111
-PIN_DEFAULT_MECHANIK=2222
 PIN_DEFAULT_MANAGER=3333
 ```
 

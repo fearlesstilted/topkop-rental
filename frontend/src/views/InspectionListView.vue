@@ -3,7 +3,7 @@
     <div class="row items-center q-mb-md">
       <div class="text-h5">Protokoły</div>
       <q-space />
-      <q-btn color="primary" icon="add" label="Nowy" to="/inspections/new" />
+      <q-btn v-if="canOperate" color="primary" icon="add" label="Nowy" to="/inspections/new" />
     </div>
 
     <!-- Filtry -->
@@ -57,12 +57,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from '@/lib/api'
+import { useAuthStore } from '@/stores/auth'
 
 const $q = useQuasar()
+const auth = useAuthStore()
 const items = ref<any[]>([])
 const loading = ref(false)
 const search = ref('')
 const period = ref(30)
+const canOperate = computed(() => auth.user?.role === 'biuro')
 
 const filtered = computed(() => {
   let list = items.value

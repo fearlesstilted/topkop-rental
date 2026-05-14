@@ -22,6 +22,11 @@ from app.models import (
     UserRole,
 )
 
+PRIMARY_USERS: list[tuple[str, UserRole, str]] = [
+    ("Biuro", UserRole.BIURO, "pin_default_biuro"),
+    ("Dyrektor", UserRole.MANAGER, "pin_default_manager"),
+]
+
 CATEGORIES: list[tuple[str, str, TrackingType]] = [
     ("koparki", "Koparki", TrackingType.MTH),
     ("ladowarki", "Ładowarki", TrackingType.MTH),
@@ -57,23 +62,26 @@ async def seed_categories(session: AsyncSession) -> None:
 
 async def seed_users(session: AsyncSession) -> None:
     settings = get_settings()
-    if not (
-        settings.pin_default_biuro
-        and settings.pin_default_mechanik
-        and settings.pin_default_manager
-    ):
+    if not (settings.pin_default_biuro and settings.pin_default_manager):
         return
 
-    defaults = [
-        ("Biuro", UserRole.BIURO, settings.pin_default_biuro),
-        ("Serwis", UserRole.MECHANIK, settings.pin_default_mechanik),
-        ("Dyrektor", UserRole.MANAGER, settings.pin_default_manager),
-    ]
-    existing = {u.name for u in (await session.execute(select(User))).scalars()}
-    for name, role, pin in defaults:
-        if name in existing:
+    existing = {
+        user.name: user
+        for user in (await session.execute(select(User))).scalars()
+    }
+    for name, role, pin_field in PRIMARY_USERS:
+        pin = getattr(settings, pin_field)
+        user = existing.get(name)
+        if user is None:
+            session.add(User(name=name, role=role, pin_hash=hash_pin(pin), is_active=True))
             continue
-        session.add(User(name=name, role=role, pin_hash=hash_pin(pin), is_active=True))
+        user.role = role
+        user.pin_hash = hash_pin(pin)
+        user.is_active = True
+
+    legacy_users = await session.execute(select(User).where(User.role == UserRole.MECHANIK))
+    for user in legacy_users.scalars():
+        user.is_active = False
     await session.flush()
 
 

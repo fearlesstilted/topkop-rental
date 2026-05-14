@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import axios from 'axios'
 
-export type Role = 'biuro' | 'mechanik' | 'manager'
+export type Role = 'biuro' | 'manager'
 
 interface LoginResponse {
   access_token: string

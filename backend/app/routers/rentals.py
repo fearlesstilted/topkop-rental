@@ -95,7 +95,7 @@ async def get_rental(
     "",
     response_model=RentalOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(UserRole.MANAGER, UserRole.BIURO))],
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
 )
 async def create_rental(
     payload: RentalCreate,
@@ -164,7 +164,7 @@ async def create_rental(
 @router.patch(
     "/{rental_id}",
     response_model=RentalOut,
-    dependencies=[Depends(require_roles(UserRole.MANAGER, UserRole.BIURO))],
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
 )
 async def update_rental(
     rental_id: int,
@@ -214,7 +214,7 @@ async def update_rental(
 @router.patch(
     "/{rental_id}/status",
     response_model=RentalOut,
-    dependencies=[Depends(require_roles(UserRole.MANAGER, UserRole.BIURO))],
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
 )
 async def change_status(
     rental_id: int,
@@ -239,7 +239,7 @@ async def change_status(
 @router.delete(
     "/{rental_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_roles(UserRole.MANAGER, UserRole.BIURO))],
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
 )
 async def delete_rental(rental_id: int, session: AsyncSession = Depends(get_session)) -> None:
     item = await session.get(Rental, rental_id)

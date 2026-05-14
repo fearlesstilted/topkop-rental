@@ -12,7 +12,7 @@
         <q-badge :color="connected ? 'positive' : 'grey'" class="status-badge">
           {{ connected ? 'online' : 'offline' }}
         </q-badge>
-        <q-btn color="primary" icon="add" label="Nowa karta" @click="openCreate" />
+        <q-btn v-if="canOperate" color="primary" icon="add" label="Nowa karta" @click="openCreate" />
       </div>
     </div>
 
@@ -88,12 +88,13 @@
 
                 <div v-if="card.checklist.length" class="q-mb-sm">
                   <div v-for="it in card.checklist" :key="it.id" class="row items-center no-wrap">
-                    <q-checkbox
-                      :model-value="it.done"
-                      dense
-                      size="sm"
-                      @update:model-value="(v) => toggle(card, it, Boolean(v))"
-                    />
+                  <q-checkbox
+                    :model-value="it.done"
+                    dense
+                    size="sm"
+                    :disable="!canOperate"
+                    @update:model-value="(v) => toggle(card, it, Boolean(v))"
+                  />
                     <span class="q-ml-xs" :class="it.done ? 'text-strike text-grey-5' : 'text-body2'">
                       {{ it.label }}
                     </span>
@@ -108,6 +109,7 @@
                 </div>
 
                 <q-input
+                  v-if="canOperate"
                   dense
                   outlined
                   :model-value="ownerDraft[card.id] ?? card.assigned_worker ?? ''"
@@ -117,8 +119,12 @@
                   @blur="saveOwner(card)"
                   @keyup.enter="saveOwner(card)"
                 />
+                <div v-else-if="card.assigned_worker" class="readonly-owner">
+                  <q-icon name="person" size="16px" />
+                  {{ card.assigned_worker }}
+                </div>
 
-                <div class="row q-gutter-xs q-mt-sm">
+                <div v-if="canOperate" class="row q-gutter-xs q-mt-sm">
                   <q-btn v-if="previousColumn(card.column)" dense flat icon="chevron_left"
                     :label="columnLabel(previousColumn(card.column))" @click="move(card, previousColumn(card.column))" />
                   <q-space />
@@ -252,7 +258,8 @@ const search = ref('')
 const priorityFilter = ref<PriorityFilter>('all')
 const onlyOverdue = ref(false)
 
-const canDelete = computed(() => auth.user?.role === 'biuro' || auth.user?.role === 'manager')
+const canOperate = computed(() => auth.user?.role === 'biuro')
+const canDelete = canOperate
 const deleteDialog = ref(false)
 const deleteTarget = ref<WorkshopCard | null>(null)
 const deleting = ref(false)
@@ -567,6 +574,18 @@ async function create(): Promise<void> {
   font-size: 12px;
   padding-left: 8px;
   white-space: pre-wrap;
+}
+
+.readonly-owner {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 10px;
+  color: #475569;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 6px;
+  padding: 6px 8px;
 }
 
 .empty-col {

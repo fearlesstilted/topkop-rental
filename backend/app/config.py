@@ -17,7 +17,6 @@ class Settings(BaseSettings):
     secret_key: str = "change-me"
 
     pin_default_biuro: str | None = None
-    pin_default_mechanik: str | None = None
     pin_default_manager: str | None = None
 
     cors_origins: str = "http://localhost:5173,https://localhost:5173"

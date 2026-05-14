@@ -6,9 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, require_roles
 from app.database import get_session
-from app.models import Equipment, Inspection, InspectionPhoto
+from app.models import Equipment, Inspection, InspectionPhoto, UserRole
 from app.schemas.inspection import InspectionCreate, InspectionOut
 from app.services.file_service import absolute_path, save_data_url, save_upload
 from app.services.pdf_service import render_inspection_report
@@ -61,13 +61,13 @@ async def get_inspection(
     "",
     response_model=InspectionOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
 )
 async def create_inspection(
     payload: str = Form(..., description="JSON of InspectionCreate"),
     photos: list[UploadFile] = File(default_factory=list),
     photo_slots: str = Form("[]", description="JSON array slots matching photos order"),
     session: AsyncSession = Depends(get_session),
-    _: object = Depends(get_current_user),
 ) -> Inspection:
     try:
         data = InspectionCreate.model_validate_json(payload)

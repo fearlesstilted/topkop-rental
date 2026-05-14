@@ -3,7 +3,7 @@
     <div class="row items-center q-mb-md">
       <div class="text-h5">Umowy</div>
       <q-space />
-      <q-btn color="primary" icon="add" label="Nowa" to="/rentals/new" />
+      <q-btn v-if="canOperate" color="primary" icon="add" label="Nowa" to="/rentals/new" />
     </div>
 
     <q-table :rows="rows" :columns="cols" row-key="id" :loading="loading" flat bordered dense>
@@ -17,15 +17,15 @@
         <q-td auto-width class="q-gutter-xs">
           <q-btn flat dense round icon="picture_as_pdf" color="grey-7" title="Pobierz PDF"
             @click.stop="openPdf(row)" />
-          <q-btn v-if="row.status === 'draft'" flat dense round icon="play_arrow" color="positive"
+          <q-btn v-if="canOperate && row.status === 'draft'" flat dense round icon="play_arrow" color="positive"
             title="Aktywuj" @click.stop="changeStatus(row, 'active')" />
-          <q-btn v-if="row.status === 'active'" flat dense round icon="check_circle" color="primary"
+          <q-btn v-if="canOperate && row.status === 'active'" flat dense round icon="check_circle" color="primary"
             title="Zwróć (zakończ)" @click.stop="changeStatus(row, 'returned')" />
-          <q-btn v-if="row.status === 'draft' || row.status === 'active'" flat dense round icon="cancel"
+          <q-btn v-if="canOperate && (row.status === 'draft' || row.status === 'active')" flat dense round icon="cancel"
             color="warning" title="Anuluj" @click.stop="changeStatus(row, 'cancelled')" />
-          <q-btn v-if="row.status === 'active'" flat dense round icon="event_repeat" color="indigo"
+          <q-btn v-if="canOperate && row.status === 'active'" flat dense round icon="event_repeat" color="indigo"
             title="Przedłuż" @click.stop="openExtend(row)" />
-          <q-btn v-if="row.status !== 'active'" flat dense round icon="delete" color="negative"
+          <q-btn v-if="canOperate && row.status !== 'active'" flat dense round icon="delete" color="negative"
             title="Usuń" @click.stop="confirmDelete(row)" />
         </q-td>
       </template>
@@ -99,11 +99,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { api, errMsg } from '@/lib/api'
+import { useAuthStore } from '@/stores/auth'
 
 const $q = useQuasar()
+const auth = useAuthStore()
 const rows = ref<any[]>([])
 const loading = ref(false)
 const dialog = ref(false)
@@ -120,6 +122,7 @@ const serviceDialog = ref(false)
 const serviceTarget = ref<any>(null)
 const serviceTitle = ref('')
 const serviceSending = ref(false)
+const canOperate = computed(() => auth.user?.role === 'biuro')
 
 const cols = [
   { name: 'id',      label: '#',      field: 'id',          align: 'left' as const },

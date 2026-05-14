@@ -29,7 +29,7 @@
         <!-- Brand -->
         <div class="nav-brand">
           <img src="/topkop_logo.webp" alt="TOP KOP" />
-          <div class="nav-brand-sub">{{ role === 'mechanik' ? 'Serwis' : 'System zarządzania' }}</div>
+          <div class="nav-brand-sub">{{ isDirector ? 'Panel dyrektora' : 'Operacje biura' }}</div>
         </div>
 
         <!-- Nav -->
@@ -39,9 +39,9 @@
             <q-item-section>Start</q-item-section>
           </q-item>
 
-          <template v-if="isBiuroOrManager">
+          <template v-if="canOperate">
             <div style="padding:12px 16px 4px; font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,0.2)">
-              Biuro
+              Szybkie działania
             </div>
             <q-item clickable v-ripple to="/rentals/new" class="nav-item" style="color:#ccc">
               <q-item-section avatar><q-icon name="add_circle" size="18px" /></q-item-section>
@@ -54,11 +54,11 @@
           </template>
 
           <div style="padding:12px 16px 4px; font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,0.2)">
-            Teren
+            {{ isDirector ? 'Przegląd' : 'Teren' }}
           </div>
-          <q-item clickable v-ripple to="/inspections/new" class="nav-item" style="color:#ccc">
+          <q-item v-if="canOperate" clickable v-ripple to="/inspections/new" class="nav-item" style="color:#ccc">
             <q-item-section avatar><q-icon name="photo_camera" size="18px" /></q-item-section>
-            <q-item-section>Nowa inspekcja</q-item-section>
+            <q-item-section>Nowy protokół</q-item-section>
           </q-item>
           <q-item clickable v-ripple to="/inspections" class="nav-item" style="color:#ccc">
             <q-item-section avatar><q-icon name="assignment" size="18px" /></q-item-section>
@@ -66,10 +66,14 @@
           </q-item>
           <q-item clickable v-ripple to="/kanban" class="nav-item" style="color:#ccc">
             <q-item-section avatar><q-icon name="view_kanban" size="18px" /></q-item-section>
-            <q-item-section>Warsztat</q-item-section>
+            <q-item-section>Tablica</q-item-section>
+          </q-item>
+          <q-item v-if="isDirector" clickable v-ripple to="/rentals" class="nav-item" style="color:#ccc">
+            <q-item-section avatar><q-icon name="description" size="18px" /></q-item-section>
+            <q-item-section>Umowy</q-item-section>
           </q-item>
 
-          <template v-if="isBiuroOrManager">
+          <template v-if="canOperate || isDirector">
             <div style="padding:12px 16px 4px; font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,0.2)">
               Sprzęt
             </div>
@@ -77,7 +81,7 @@
               <q-item-section avatar><q-icon name="construction" size="18px" /></q-item-section>
               <q-item-section>Park maszyn</q-item-section>
             </q-item>
-            <q-item v-if="isManager" clickable v-ripple to="/categories" class="nav-item" style="color:#ccc">
+            <q-item v-if="canOperate" clickable v-ripple to="/categories" class="nav-item" style="color:#ccc">
               <q-item-section avatar><q-icon name="category" size="18px" /></q-item-section>
               <q-item-section>Kategorie</q-item-section>
             </q-item>
@@ -110,16 +114,15 @@ const auth = useAuthStore()
 const router = useRouter()
 
 const role = computed(() => auth.user?.role)
-const isManager = computed(() => role.value === 'manager')
-const isBiuroOrManager = computed(() => role.value === 'biuro' || role.value === 'manager')
+const isDirector = computed(() => role.value === 'manager')
+const canOperate = computed(() => role.value === 'biuro')
 
 const roleLabel = computed(() => ({
-  biuro: 'Biuro', mechanik: 'Serwis', manager: 'Dyrektor'
+  biuro: 'Biuro', manager: 'Dyrektor'
 }[role.value ?? 'biuro'] ?? role.value))
 
 const roleChip = computed(() => ({
   biuro:    { color: 'indigo-8', icon: 'badge' },
-  mechanik: { color: 'orange-8', icon: 'handyman' },
   manager:  { color: 'teal-8',   icon: 'supervisor_account' },
 }[role.value ?? 'biuro'] ?? { color: 'grey-7', icon: 'person' }))
 

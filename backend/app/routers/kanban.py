@@ -97,7 +97,12 @@ async def list_cards(
     return await _serialize_cards(session, cards)
 
 
-@router.post("", response_model=CardOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=CardOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
+)
 async def create_card(
     payload: CardCreate,
     session: AsyncSession = Depends(get_session),
@@ -133,7 +138,11 @@ async def create_card(
     return (await _serialize_cards(session, [card]))[0]
 
 
-@router.patch("/{card_id}", response_model=CardOut)
+@router.patch(
+    "/{card_id}",
+    response_model=CardOut,
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
+)
 async def update_card(
     card_id: int,
     payload: CardUpdate,
@@ -164,7 +173,7 @@ async def toggle_checklist(
     item_id: int,
     done: bool,
     session: AsyncSession = Depends(get_session),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_roles(UserRole.BIURO)),
 ) -> CardOut:
     item = await session.get(KanbanChecklistItem, item_id)
     if not item or item.card_id != card_id:
@@ -196,7 +205,7 @@ async def toggle_checklist(
 @router.delete(
     "/{card_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    dependencies=[Depends(require_roles(UserRole.MANAGER, UserRole.BIURO))],
+    dependencies=[Depends(require_roles(UserRole.BIURO))],
 )
 async def delete_card(card_id: int, session: AsyncSession = Depends(get_session)) -> None:
     card = await session.get(KanbanCard, card_id)

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user
 from app.database import get_session
 from app.models import Equipment, Rental, User
-from app.models.enums import EquipmentStatus, RentalStatus
+from app.models.enums import EquipmentStatus, RentalBillingMode, RentalStatus, UserRole
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -116,7 +116,7 @@ async def list_clients(
 @router.get("/dashboard")
 async def dashboard(
     session: AsyncSession = Depends(get_session),
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ) -> dict[str, object]:
     today = date.today()
     month_start = today.replace(day=1)
@@ -149,7 +149,7 @@ async def dashboard(
         )
     )).scalar_one()
 
-    return {
+    data: dict[str, object] = {
         "active_rentals": active_rentals,
         "equipment_out": equipment_out,
         "ending_today": [
@@ -164,3 +164,118 @@ async def dashboard(
         "ending_week": ending_week,
         "month_revenue": float(month_revenue),
     }
+
+    if user.role != UserRole.MANAGER:
+        return data
+
+    total_equipment = (await session.execute(
+        select(func.count()).select_from(Equipment)
+    )).scalar_one()
+    available_equipment = (await session.execute(
+        select(func.count()).where(Equipment.status == EquipmentStatus.AVAILABLE)
+    )).scalar_one()
+    service_equipment = (await session.execute(
+        select(func.count()).where(Equipment.status == EquipmentStatus.SERVICE)
+    )).scalar_one()
+    broken_equipment = (await session.execute(
+        select(func.count()).where(Equipment.status == EquipmentStatus.BROKEN)
+    )).scalar_one()
+
+    draft_rentals = (await session.execute(
+        select(func.count()).where(Rental.status == RentalStatus.DRAFT)
+    )).scalar_one()
+    returned_month = (await session.execute(
+        select(func.count()).where(
+            Rental.status == RentalStatus.RETURNED,
+            Rental.start_date >= month_start,
+        )
+    )).scalar_one()
+    cancelled_month = (await session.execute(
+        select(func.count()).where(
+            Rental.status == RentalStatus.CANCELLED,
+            Rental.start_date >= month_start,
+        )
+    )).scalar_one()
+    hourly_rentals_month = (await session.execute(
+        select(func.count()).where(
+            Rental.billing_mode == RentalBillingMode.HOURLY,
+            Rental.start_date >= month_start,
+        )
+    )).scalar_one()
+    daily_rentals_month = (await session.execute(
+        select(func.count()).where(
+            Rental.billing_mode == RentalBillingMode.DAILY,
+            Rental.start_date >= month_start,
+        )
+    )).scalar_one()
+    operator_hours_month = (await session.execute(
+        select(func.coalesce(func.sum(Rental.operator_hours), 0)).where(
+            Rental.start_date >= month_start,
+            Rental.operator_hours.is_not(None),
+        )
+    )).scalar_one()
+    transport_revenue_month = (await session.execute(
+        select(func.coalesce(func.sum(Rental.transport_cost), 0)).where(
+            Rental.start_date >= month_start,
+        )
+    )).scalar_one()
+    average_rental_netto = (await session.execute(
+        select(func.coalesce(func.avg(Rental.total_netto), 0)).where(
+            Rental.start_date >= month_start,
+            Rental.status.in_([RentalStatus.ACTIVE, RentalStatus.RETURNED]),
+        )
+    )).scalar_one()
+
+    upcoming_returns = (await session.execute(
+        select(Rental)
+        .where(
+            Rental.status == RentalStatus.ACTIVE,
+            Rental.end_date >= today,
+            Rental.end_date <= week_end,
+        )
+        .order_by(Rental.end_date, Rental.client_name)
+        .limit(6)
+    )).scalars().all()
+
+    top_clients = (await session.execute(
+        select(
+            Rental.client_name,
+            func.coalesce(func.sum(Rental.total_netto), 0).label("total_netto"),
+            func.count(Rental.id).label("rentals_count"),
+        )
+        .where(
+            Rental.start_date >= month_start,
+            Rental.status.in_([RentalStatus.ACTIVE, RentalStatus.RETURNED]),
+        )
+        .group_by(Rental.client_name)
+        .order_by(func.sum(Rental.total_netto).desc())
+        .limit(5)
+    )).all()
+
+    data.update({
+        "total_equipment": total_equipment,
+        "available_equipment": available_equipment,
+        "service_equipment": service_equipment,
+        "broken_equipment": broken_equipment,
+        "draft_rentals": draft_rentals,
+        "returned_month": returned_month,
+        "cancelled_month": cancelled_month,
+        "hourly_rentals_month": hourly_rentals_month,
+        "daily_rentals_month": daily_rentals_month,
+        "operator_hours_month": float(operator_hours_month),
+        "transport_revenue_month": float(transport_revenue_month),
+        "average_rental_netto": float(average_rental_netto),
+        "upcoming_returns": [
+            {"id": r.id, "client_name": r.client_name, "end_date": str(r.end_date)}
+            for r in upcoming_returns
+        ],
+        "top_clients": [
+            {
+                "client_name": row.client_name,
+                "total_netto": float(row.total_netto),
+                "rentals_count": row.rentals_count,
+            }
+            for row in top_clients
+        ],
+    })
+    return data

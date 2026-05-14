@@ -7,7 +7,7 @@
         style="width:240px" clearable class="q-mr-sm">
         <template #prepend><q-icon name="search" /></template>
       </q-input>
-      <q-btn color="primary" icon="add" label="Nowy" to="/equipment/new" />
+      <q-btn v-if="canOperate" color="primary" icon="add" label="Nowy" to="/equipment/new" />
     </div>
 
     <q-table :rows="filtered" :columns="cols" row-key="id" :loading="loading" flat bordered dense>
@@ -18,8 +18,8 @@
       </template>
       <template #body-cell-actions="{ row }">
         <q-td auto-width>
-          <q-btn flat dense round icon="edit" color="grey" @click.stop="$router.push(`/equipment/${row.id}`)" />
-          <q-btn flat dense round icon="delete" color="negative" @click.stop="confirmDelete(row)" />
+          <q-btn v-if="canOperate" flat dense round icon="edit" color="grey" @click.stop="$router.push(`/equipment/${row.id}`)" />
+          <q-btn v-if="canOperate" flat dense round icon="delete" color="negative" @click.stop="confirmDelete(row)" />
         </q-td>
       </template>
     </q-table>
@@ -43,14 +43,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { api, errMsg } from '@/lib/api'
 import { useQuasar } from 'quasar'
+import { useAuthStore } from '@/stores/auth'
 
 const $q = useQuasar()
+const auth = useAuthStore()
 const rows = ref<any[]>([])
 const loading = ref(false)
 const dialog = ref(false)
 const deleting = ref(false)
 const target = ref<any>(null)
 const search = ref('')
+const canOperate = computed(() => auth.user?.role === 'biuro')
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -63,15 +66,17 @@ const filtered = computed(() => {
   )
 })
 
-const cols = [
+const cols = computed(() => [
   { name: 'code',   label: 'Kod',      field: 'code',                align: 'left' as const },
   { name: 'reg',    label: 'Rej.',      field: 'registration_number', align: 'left' as const },
   { name: 'name',   label: 'Nazwa',     field: 'name',                align: 'left' as const },
   { name: 'rate1',  label: '1-7 dni',   field: 'rate_tier_1_7',       align: 'right' as const },
   { name: 'rate2',  label: '>7 dni',    field: 'rate_above_7',        align: 'right' as const },
   { name: 'status', label: 'Status',    field: 'status',              align: 'left' as const },
-  { name: 'actions',label: '',          field: 'actions',             align: 'center' as const },
-]
+  ...(canOperate.value
+    ? [{ name: 'actions', label: '', field: 'actions', align: 'center' as const }]
+    : []),
+])
 
 function statusColor(s: string) {
   return { available: 'positive', rented: 'primary', service: 'warning', broken: 'negative' }[s] ?? 'grey'
