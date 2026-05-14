@@ -16,6 +16,7 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
+RUN chmod +x scripts/render-start.sh
 
 EXPOSE 8000
 

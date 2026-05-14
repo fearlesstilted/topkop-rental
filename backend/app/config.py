@@ -1,6 +1,8 @@
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -48,6 +50,24 @@ class Settings(BaseSettings):
     company_spzoo_regon: str = ""
     company_spzoo_phone: str = "503 839 393"
     company_spzoo_email: str = "biuro.topkop@gmail.com"
+
+    @field_validator("database_url")
+    @classmethod
+    def normalize_async_database_url(cls, value: str) -> str:
+        parts = urlsplit(value)
+        scheme = parts.scheme
+        if scheme in {"postgres", "postgresql"}:
+            scheme = "postgresql+asyncpg"
+
+        if scheme != "postgresql+asyncpg":
+            return value
+
+        query = [
+            ("ssl" if key == "sslmode" else key, query_value)
+            for key, query_value in parse_qsl(parts.query, keep_blank_values=True)
+            if key != "channel_binding"
+        ]
+        return urlunsplit((scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
     @property
     def cors_origins_list(self) -> list[str]:
