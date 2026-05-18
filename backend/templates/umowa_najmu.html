@@ -306,13 +306,9 @@
 <div class="section">
   <div class="section-title">Przedmiot najmu</div>
   <table class="clean">
-    <tr><th>Kategoria</th><td>{{ category.name_pl }}</td></tr>
     <tr><th>Sprzęt</th><td>{{ equipment.name }} ({{ equipment.code }})</td></tr>
     {% if equipment.manufacturer or equipment.model %}
     <tr><th>Producent / Model</th><td>{{ equipment.manufacturer or "" }} {{ equipment.model or "" }}{% if equipment.year %}, {{ equipment.year }}{% endif %}</td></tr>
-    {% endif %}
-    {% if rental.daily_limit %}
-    <tr><th>Dzienny limit</th><td>{{ rental.daily_limit }} {{ "mth" if equipment.tracking_type.value == "mth" else ("rbh" if equipment.tracking_type.value == "rbh" else "") }}</td></tr>
     {% endif %}
   </table>
 </div>
@@ -333,26 +329,16 @@
     <tr><th>Model rozliczenia</th><td class="right">Najem z operatorem / rozliczenie godzinowe</td></tr>
     <tr><th>Liczba godzin</th><td class="right">{{ rental.operator_hours or "0.00" }} h</td></tr>
     <tr><th>Stawka godzinowa</th><td class="right">{{ rental.hourly_rate or "0.00" }} zł / h</td></tr>
-    <tr><th>Suma pracy operatora</th><td class="right">{{ rental.subtotal }} zł</td></tr>
+    <tr><th>Cena usługi operatora</th><td class="right">{{ rental_charge }} zł</td></tr>
     {% else %}
     <tr><th>Model rozliczenia</th><td class="right">Najem dobowy{% if rental.operator_included %} z operatorem{% endif %}</td></tr>
     {% if rental.flat_rate %}
     <tr><th>Stawka dobowa</th><td class="right">{{ rental.rate_tier_1_7 }} zł</td></tr>
-    <tr><th>{{ rental.rental_days }} × {{ rental.rate_tier_1_7 }} zł</th><td class="right">{{ rental.subtotal }} zł</td></tr>
     {% else %}
     <tr><th>Stawka 1–7 dni</th><td class="right">{{ rental.rate_tier_1_7 }} zł / doba</td></tr>
     <tr><th>Stawka powyżej 7 dni</th><td class="right">{{ rental.rate_above_7 }} zł / doba</td></tr>
-    <tr><th>Suma przed korektą</th><td class="right">{{ rental.subtotal }} zł</td></tr>
     {% endif %}
-    {% endif %}
-    {% if rental.discount_pct and rental.discount_pct|float > 0 %}
-    <tr><th>Rabat</th><td class="right">−{{ rental.discount_pct }}%</td></tr>
-    {% endif %}
-    {% if rental.surcharge_pct and rental.surcharge_pct|float > 0 %}
-    <tr><th>Dopłata</th><td class="right">+{{ rental.surcharge_pct }}%</td></tr>
-    {% endif %}
-    {% if rental.overage_rate %}
-    <tr><th>Stawka za nadgodziny</th><td class="right">{{ rental.overage_rate }} zł / {{ "mth" if equipment.tracking_type.value == "mth" else "rbh" }}</td></tr>
+    <tr><th>Cena najmu sprzętu</th><td class="right">{{ rental_charge }} zł</td></tr>
     {% endif %}
     {% if rental.transport_cost and rental.transport_cost|float > 0 %}
     <tr>
@@ -418,20 +404,20 @@
 <div class="page-break warunki">
   <h2>Warunki Umowy</h2>
   <ol>
-    <li>{{ company.name }} wynajmuje do użytkowania na określony w umowie okres sprzęt i wyposażenie dodatkowe.</li>
-    <li>{{ company.name }} udzieli niezbędnych instrukcji co do zasad prawidłowego użytkowania przedmiotu najmu.</li>
-    <li>{{ company.name }} wyda najemcy przedmiot najmu czysty i sprawny pod względem technicznym.</li>
-    <li>Najemca zobowiązuje się użytkować przedmiot najmu z należytą starannością i odpowiadać będzie przed wynajmującym za wszelkie szkody jakie powstaną, w przedmiocie najmu z powodu nie dołożenia tej staranności przez niego samego lub osoby, za które ponosi odpowiedzialność. W szczególności najemca wynajmującemu za wszelkie szkody jakie powstaną, w przedmiocie najmu przed uszkodzeniem, zniszczeniem lub utratą zobowiązany jest należycie zabezpieczyć przedmiot najmu omówionych w punkcie 4, najemca zobowiązany jest do wyrównania strat dotyczących przedmiotu najmu.</li>
-    <li>W przypadku strat dotyczących przedmiotu najmu wymienionej w umowie wartości przedmiotu najmu, jako wyrównania strat w wysokości wymienionej w odpowiedniej części tej wartości przedmiotu najmu {{ company.short or company.name }} pobiera w momencie zwrotu przedmiotu najmu zniszczenia lub utraty, lub w odpowiedniej części lub w wysokości strat dotyczących przedmiotu najmu w momencie zwrotu przedmiotu najmu gwarancję, w przypadku strat dotyczących przedmiotu najmu w gotówce. Kaucja podlega zwrotowi najemcy w momencie zwrotu przedmiotu najmu czystego i w takim stanie, w jakim został on wynajęty z uwzględnieniem pkt. 6 niniejszej umowy.</li>
-    <li>Za zwrot przedmiotu najmu uważa się oddanie jedynie do wypożyczalni przedmiotu najmu czystego w skutek prawidłowego używania. W przeciwnym razie najemca zobowiązany jest do zapłaty czynszu określonego w niniejszej umowie do czasu przywrócenia przez niego przedmiotu najmu do właściwego stanu.</li>
-    <li>Termin użytkowania upływa z chwilą oddania przedmiotu najmu wymaga potwierdzenia przez {{ company.short or company.name }}. Przyjęcie zwróconego przedmiotu najmu może być przedłużony za zgodą {{ company.short or company.name }}.</li>
-    <li>Ustalony czas najmu może być przedłużony za zgodą {{ company.short or company.name }} po przelaniu swoich praw i obowiązków z umowy na osobę trzecią.</li>
-    <li>Najemca nie może bez zgody {{ company.short or company.name }} przelać swoich praw i obowiązków z umowy w momencie zwrócenia przedmiotu najmu.</li>
-    <li>Czynsz, uiszczony bez czasu i transportu wynajmującego koszty tego transportu pokrywa najemca.</li>
-    <li>W przypadku korzystania czynszu za najem.</li>
-    <li>Najemca oświadcza, że zapoznał się i zrozumiał instrukcję obsługi i eksploatacji przedmiotu najmu. Skutki uszkodzeń, awarii i strat powstałe przez nie przestrzeganie w/w instrukcji oraz zasad bhp będą obciążały najemcę.</li>
-    <li>{{ company.short or company.name }} zastrzega sobie prawo w określeniu oceny technicznej i odpowiedzialności za uszkodzenia najemcy. {{ company.short or company.name }} może wyrazić zgodę na przekazanie sprawy do zwróconego przez najemcę przedmiotu najmu (instytucji), uzgodnionego pomiędzy stronami i respektować wyniki tej ekspertyzy neutralnego eksperta lub instytucji, uzgodnionego pomiędzy stronami i respektować wyniki tej odpowiedniego ekspertyzy. Koszt tej ekspertyzy pokrywa strona przeciwko której wydano orzeczenie.</li>
-    <li>Odpowiedzialność za szkody wobec osób trzecich powstałe na skutek prac prowadzonych przy użyciu przedmiotu najmu przez najemcę ponosi najemca.</li>
+    <li>{{ company.name }} oddaje Najemcy do używania sprzęt wskazany w niniejszej umowie na okres i za wynagrodzeniem określonym w umowie.</li>
+    <li>Sprzęt zostaje wydany Najemcy w stanie sprawnym technicznie, kompletnym i czystym, chyba że strony wpiszą inne uwagi w protokole zdawczo-odbiorczym.</li>
+    <li>Najemca zobowiązuje się używać sprzętu zgodnie z jego przeznaczeniem, instrukcją obsługi, zasadami BHP oraz zaleceniami przekazanymi przez Wynajmującego.</li>
+    <li>Najemca odpowiada za uszkodzenie, zniszczenie, utratę lub nadmierne zużycie sprzętu powstałe w okresie najmu z przyczyn leżących po stronie Najemcy albo osób, którym Najemca umożliwił korzystanie ze sprzętu.</li>
+    <li>Najemca nie może oddawać sprzętu osobom trzecim, podnajmować go ani przenosić praw i obowiązków z umowy bez uprzedniej zgody Wynajmującego.</li>
+    <li>Najemca zobowiązuje się zabezpieczyć sprzęt przed kradzieżą, uszkodzeniem, działaniem warunków atmosferycznych oraz dostępem osób nieuprawnionych.</li>
+    <li>Zwrot sprzętu następuje w miejscu uzgodnionym przez strony. Sprzęt powinien zostać zwrócony w stanie niepogorszonym ponad normalne zużycie wynikające z prawidłowego używania.</li>
+    <li>W przypadku zwrotu sprzętu zabrudzonego Wynajmujący może naliczyć opłatę za czyszczenie w wysokości wskazanej w umowie, chyba że strony uzgodnią inaczej.</li>
+    <li>Jeżeli Najemca nie zwróci sprzętu w terminie wskazanym w umowie, Wynajmujący może naliczać wynagrodzenie za dalszy okres korzystania ze sprzętu według stawek wynikających z umowy lub odrębnych ustaleń stron.</li>
+    <li>Koszty transportu, odbioru, załadunku, rozładunku oraz dodatkowych usług ponosi Najemca, jeżeli zostały wskazane w umowie lub uzgodnione przez strony.</li>
+    <li>Wynagrodzenie wskazane w umowie jest kwotą netto. Do kwoty netto zostanie doliczony podatek VAT według obowiązujących przepisów.</li>
+    <li>Wszelkie uwagi dotyczące stanu sprzętu przy wydaniu lub zwrocie powinny zostać wpisane do protokołu zdawczo-odbiorczego.</li>
+    <li>W razie sporu dotyczącego stanu technicznego sprzętu Wynajmujący może dokonać oceny technicznej lub zlecić ekspertyzę. Koszt ekspertyzy ponosi strona, której stanowisko nie zostanie potwierdzone.</li>
+    <li>Najemca ponosi odpowiedzialność za szkody wyrządzone osobom trzecim podczas korzystania ze sprzętu, o ile szkody te powstały z przyczyn leżących po stronie Najemcy.</li>
   </ol>
 
   <div class="warunki-foot">

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import axios from 'axios'
+import { API_TIMEOUT_MS } from '@/lib/api'
 
 export type Role = 'biuro' | 'manager'
 
@@ -28,7 +29,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(pin: string) {
     const { data } = await axios.post<LoginResponse>(
       `${API_BASE_URL.replace(/\/$/, '')}/auth/login`,
-      { pin }
+      { pin },
+      { timeout: API_TIMEOUT_MS }
     )
     token.value = data.access_token
     user.value = { id: data.user_id, name: data.name, role: data.role }

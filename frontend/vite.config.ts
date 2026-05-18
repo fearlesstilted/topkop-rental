@@ -10,6 +10,13 @@ export default defineConfig({
     quasar({ sassVariables: fileURLToPath(new URL('./src/styles/quasar-variables.sass', import.meta.url)) }),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        navigateFallback: '/index.html',
+        skipWaiting: true
+      },
       manifest: {
         name: 'TopKop Rental',
         short_name: 'TopKop',
@@ -23,10 +30,6 @@ export default defineConfig({
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' }
         ]
       },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        navigateFallback: '/index.html'
-      }
     })
   ],
   resolve: {

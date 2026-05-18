@@ -66,6 +66,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import axios from 'axios'
 
 const pin = ref('')
 const err = ref('')
@@ -81,8 +82,10 @@ async function submit() {
   try {
     await auth.login(pin.value.trim())
     router.push((route.query.next as string) || '/')
-  } catch {
-    err.value = 'Nieprawidłowy PIN'
+  } catch (error: unknown) {
+    err.value = axios.isAxiosError(error) && error.code === 'ECONNABORTED'
+      ? 'Serwer startuje po uśpieniu. Spróbuj ponownie za chwilę.'
+      : 'Nieprawidłowy PIN'
     pin.value = ''
   } finally {
     busy.value = false

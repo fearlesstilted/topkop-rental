@@ -1,9 +1,11 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
 
+export const API_TIMEOUT_MS = 90000
+
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 30000
+  timeout: API_TIMEOUT_MS
 })
 
 api.interceptors.request.use((config) => {

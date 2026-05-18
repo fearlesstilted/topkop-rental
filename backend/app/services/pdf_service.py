@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -94,6 +95,8 @@ async def render_pdf(template: str, context: dict[str, Any]) -> tuple[bytes, str
 
 
 async def render_rental_contract(rental, equipment, category) -> tuple[bytes, str]:
+    transport_cost = rental.transport_cost or Decimal("0")
+    rental_charge = rental.total_netto - transport_cost
     return await render_pdf(
         "umowa_najmu.html",
         {
@@ -101,6 +104,7 @@ async def render_rental_contract(rental, equipment, category) -> tuple[bytes, st
             "equipment": equipment,
             "category": category,
             "company": resolve_company(getattr(rental, "billing_entity", None)),
+            "rental_charge": rental_charge,
         },
     )
 
