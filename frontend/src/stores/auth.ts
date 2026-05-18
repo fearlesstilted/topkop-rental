@@ -14,6 +14,7 @@ interface LoginResponse {
 
 const TOKEN_KEY = 'topkop_token'
 const USER_KEY = 'topkop_user'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
@@ -25,7 +26,10 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthed = computed(() => !!token.value && !!user.value)
 
   async function login(pin: string) {
-    const { data } = await axios.post<LoginResponse>('/api/auth/login', { pin })
+    const { data } = await axios.post<LoginResponse>(
+      `${API_BASE_URL.replace(/\/$/, '')}/auth/login`,
+      { pin }
+    )
     token.value = data.access_token
     user.value = { id: data.user_id, name: data.name, role: data.role }
     localStorage.setItem(TOKEN_KEY, data.access_token)
