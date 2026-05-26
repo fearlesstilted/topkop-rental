@@ -47,6 +47,8 @@ class RentalCreate(BaseModel):
     client_phone: str | None = None
     start_date: date
     end_date: date
+    is_term_estimated: bool = False
+    term_note: str | None = None
     weekdays_only: bool = True
     align_to_monday: bool = True
     rate_tier_1_7: Decimal
@@ -73,6 +75,8 @@ class RentalUpdate(BaseModel):
     client_phone: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    is_term_estimated: bool | None = None
+    term_note: str | None = None
     weekdays_only: bool | None = None
     align_to_monday: bool | None = None
     rate_tier_1_7: Decimal | None = None
@@ -102,6 +106,8 @@ class RentalOut(BaseModel):
     client_phone: str | None
     start_date: date
     end_date: date
+    is_term_estimated: bool
+    term_note: str | None
     weekdays_only: bool
     align_to_monday: bool
     rate_tier_1_7: Decimal

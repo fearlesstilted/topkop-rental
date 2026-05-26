@@ -134,6 +134,8 @@ async def create_rental(
         client_phone=payload.client_phone,
         start_date=payload.start_date,
         end_date=payload.end_date,
+        is_term_estimated=payload.is_term_estimated,
+        term_note=payload.term_note,
         weekdays_only=payload.weekdays_only,
         align_to_monday=payload.align_to_monday,
         rate_tier_1_7=payload.rate_tier_1_7,

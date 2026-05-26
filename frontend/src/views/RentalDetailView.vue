@@ -62,6 +62,25 @@
             <div class="col-6 col-sm-3">
               <q-checkbox v-model="form.align_to_monday" label="Wyrównaj do pon." dense :disable="!editable" />
             </div>
+            <div class="col-12">
+              <q-checkbox
+                v-model="form.is_term_estimated"
+                label="Termin orientacyjny"
+                dense
+                :disable="!editable"
+              />
+              <q-input
+                v-if="form.is_term_estimated"
+                v-model="form.term_note"
+                label="Ustalenie terminu"
+                placeholder="np. przewidywany zwrot po ok. 2 tygodniach, możliwe przedłużenie po kontakcie"
+                maxlength="300"
+                counter
+                dense
+                :readonly="!editable"
+                class="q-mt-sm"
+              />
+            </div>
           </div>
         </q-card-section>
       </q-card>
@@ -131,6 +150,12 @@
             <div>
               <div class="text-caption text-grey-6">Dni najmu</div>
               <div class="text-h6">{{ rental.rental_days }} dni</div>
+              <q-badge
+                v-if="rental.is_term_estimated"
+                color="amber-8"
+                text-color="black"
+                label="termin orientacyjny"
+              />
             </div>
             <div>
               <div class="text-caption text-grey-6">Model</div>
@@ -206,6 +231,8 @@ function populateForm(r: any) {
     client_phone: r.client_phone ?? '',
     start_date: r.start_date,
     end_date: r.end_date,
+    is_term_estimated: r.is_term_estimated,
+    term_note: r.term_note ?? '',
     weekdays_only: r.weekdays_only,
     align_to_monday: r.align_to_monday,
     rate_tier_1_7: r.rate_tier_1_7,
@@ -241,6 +268,7 @@ async function save() {
       payload.hourly_rate = null
     }
     if (!payload.transport_description) payload.transport_description = null
+    if (!payload.is_term_estimated || !payload.term_note) payload.term_note = null
     if (!payload.notes) payload.notes = null
     const { data } = await api.patch(`/rentals/${route.params.id}`, payload)
     rental.value = data

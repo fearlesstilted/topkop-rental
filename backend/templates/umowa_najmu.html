@@ -317,8 +317,11 @@
   <div class="section-title">Okres najmu</div>
   <table class="clean">
     <tr><th>Od</th><td>{{ rental.start_date.strftime("%d.%m.%Y") }}</td></tr>
-    <tr><th>Do</th><td>{{ rental.end_date.strftime("%d.%m.%Y") }}</td></tr>
+    <tr><th>Do</th><td>{{ rental.end_date.strftime("%d.%m.%Y") }}{% if rental.is_term_estimated %} (termin orientacyjny){% endif %}</td></tr>
     <tr><th>Dni naliczone</th><td>{{ rental.rental_days }}{% if rental.weekdays_only %} (tylko dni robocze){% else %} (wszystkie dni){% endif %}</td></tr>
+    {% if rental.is_term_estimated and rental.term_note %}
+    <tr><th>Ustalenie terminu</th><td>{{ rental.term_note }}</td></tr>
+    {% endif %}
   </table>
 </div>
 
@@ -353,7 +356,11 @@
 
 <div class="notice">
   W razie zwrócenia brudnego sprzętu pobierana jest opłata w wysokości <strong>100 zł</strong>.
+  {% if rental.is_term_estimated %}
+  Termin zwrotu ma charakter orientacyjny. Dalsze korzystanie ze sprzętu wymaga potwierdzenia przez Wynajmującego i będzie rozliczane według ustalonych stawek.
+  {% else %}
   Brak zwrotu wynajmowanego sprzętu w terminie określonym niniejszą umową powoduje, że najem został przedłużony na czas nieokreślony.
+  {% endif %}
   Najemca w momencie podpisania niniejszej umowy oświadcza, iż zapoznał się z Ogólnymi Warunkami Umowy {{ company.short or company.name }} zawartymi na stronie 2.
 </div>
 

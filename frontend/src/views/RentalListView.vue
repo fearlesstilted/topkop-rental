@@ -6,7 +6,29 @@
       <q-btn v-if="canOperate" color="primary" icon="add" label="Nowa" to="/rentals/new" />
     </div>
 
-    <q-table :rows="rows" :columns="cols" row-key="id" :loading="loading" flat bordered dense>
+    <q-table
+      :rows="rows"
+      :columns="cols"
+      row-key="id"
+      :loading="loading"
+      flat
+      bordered
+      dense
+      @row-click="openRental"
+    >
+      <template #body-cell-to="{ row }">
+        <q-td>
+          <div>{{ row.end_date }}</div>
+          <q-badge
+            v-if="row.is_term_estimated"
+            color="amber-8"
+            text-color="black"
+            label="orientacyjny"
+            class="q-mt-xs"
+          />
+        </q-td>
+      </template>
+
       <template #body-cell-status="{ row }">
         <q-td>
           <q-badge :color="statusColor(row.status)" :label="statusLabel(row.status)" />
@@ -15,6 +37,15 @@
 
       <template #body-cell-actions="{ row }">
         <q-td auto-width class="q-gutter-xs">
+          <q-btn
+            flat
+            dense
+            round
+            :icon="canOperate && row.status !== 'returned' && row.status !== 'cancelled' ? 'edit' : 'visibility'"
+            color="grey-8"
+            :title="canOperate && row.status !== 'returned' && row.status !== 'cancelled' ? 'Edytuj' : 'Podgląd'"
+            @click.stop="openRental(null, row)"
+          />
           <q-btn flat dense round icon="picture_as_pdf" color="grey-7" title="Pobierz PDF"
             @click.stop="openPdf(row)" />
           <q-btn v-if="canOperate && row.status === 'draft'" flat dense round icon="play_arrow" color="positive"
@@ -100,11 +131,13 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { api, errMsg } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
 
 const $q = useQuasar()
+const router = useRouter()
 const auth = useAuthStore()
 const rows = ref<any[]>([])
 const loading = ref(false)
@@ -140,6 +173,10 @@ function statusColor(s: string) {
 }
 function statusLabel(s: string) {
   return { draft: 'Szkic', active: 'Aktywna', returned: 'Zwrócona', cancelled: 'Anulowana' }[s] ?? s
+}
+
+function openRental(_evt: Event | null, row: any) {
+  router.push(`/rentals/${row.id}`)
 }
 
 async function openPdf(row: any) {

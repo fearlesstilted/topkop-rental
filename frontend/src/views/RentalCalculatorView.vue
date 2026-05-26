@@ -58,6 +58,26 @@
             <q-input class="col-12 col-sm-6" v-model="form.start_date" type="date" label="Data od" required />
             <q-input class="col-12 col-sm-6" v-model="form.end_date" type="date" label="Data do" required />
           </div>
+          <div class="term-box q-mt-md">
+            <q-toggle
+              v-model="form.is_term_estimated"
+              label="Termin orientacyjny"
+              color="primary"
+            />
+            <div class="text-caption text-grey-7">
+              Dla małego sprzętu: klient mówi „około 2 tygodnie”, ale może oddać później.
+              W umowie zostaje data przewidywana, a nie twarde zobowiązanie systemowe.
+            </div>
+            <q-input
+              v-if="form.is_term_estimated"
+              v-model="form.term_note"
+              class="q-mt-sm"
+              label="Ustalenie terminu"
+              placeholder="np. przewidywany zwrot po ok. 2 tygodniach, możliwe przedłużenie po kontakcie"
+              maxlength="300"
+              counter
+            />
+          </div>
 
           <div v-if="form.billing_mode === 'daily'" class="q-gutter-md">
             <div class="row q-gutter-sm">
@@ -243,6 +263,8 @@ const form = ref<any>({
   client_phone: '',
   start_date: new Date().toISOString().slice(0, 10),
   end_date: new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10),
+  is_term_estimated: false,
+  term_note: '',
   weekdays_only: true,
   align_to_monday: true,
   rate_tier_1_7: 0,
@@ -404,6 +426,7 @@ function normalizedPayload(): any {
     hourly_rate: form.value.billing_mode === 'hourly' ? form.value.hourly_rate : null,
     transport_cost: form.value.transport_cost || 0,
     transport_description: form.value.transport_description || null,
+    term_note: form.value.is_term_estimated ? (form.value.term_note || null) : null,
     notes: form.value.notes || null
   }
 }
@@ -521,6 +544,7 @@ async function submit(): Promise<void> {
 }
 
 .operator-panel,
+.term-box,
 .transport-strip {
   background: #f8fafc;
   border: 1px solid rgba(15, 23, 42, 0.07);

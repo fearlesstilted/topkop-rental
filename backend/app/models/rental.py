@@ -44,6 +44,8 @@ class Rental(Base):
 
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    is_term_estimated: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    term_note: Mapped[str | None] = mapped_column(String(300), nullable=True)
     weekdays_only: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     align_to_monday: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
