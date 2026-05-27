@@ -133,6 +133,39 @@
               <q-input v-model="form.transport_description" label="Opis transportu" dense :readonly="!editable" />
             </div>
           </div>
+          <div class="manual-total-row q-mt-md" :class="{ active: form.manual_total_enabled }">
+            <div class="row q-col-gutter-md items-center">
+              <div class="col-12 col-sm">
+                <q-checkbox
+                  v-model="form.manual_total_enabled"
+                  label="! Cena końcowa ręcznie"
+                  dense
+                  :disable="!editable"
+                  @update:model-value="syncManualTotal"
+                />
+                <div class="text-caption text-grey-6 q-mt-xs">
+                  Kwota końcowa netto nadpisuje wyliczenie systemowe.
+                </div>
+              </div>
+              <div class="col-12 col-sm-4">
+                <q-input
+                  v-model.number="form.manual_total_netto"
+                  label="Końcowa cena netto"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  suffix="zł"
+                  dense
+                  :readonly="!editable"
+                  :disable="!form.manual_total_enabled"
+                >
+                  <template #prepend>
+                    <q-icon name="priority_high" color="warning" />
+                  </template>
+                </q-input>
+              </div>
+            </div>
+          </div>
         </q-card-section>
       </q-card>
 
@@ -164,6 +197,13 @@
             <div class="text-right">
               <div class="text-caption text-grey-6">Wartość netto</div>
               <div class="text-h5" style="font-weight:800; color:#111">{{ rental.total_netto }} zł</div>
+              <q-badge
+                v-if="rental.manual_total_enabled"
+                color="warning"
+                text-color="black"
+                icon="priority_high"
+                label="cena ręczna"
+              />
             </div>
           </div>
         </q-card-section>
@@ -246,7 +286,19 @@ function populateForm(r: any) {
     transport_description: r.transport_description ?? '',
     discount_pct: r.discount_pct,
     surcharge_pct: r.surcharge_pct,
+    manual_total_enabled: r.manual_total_enabled,
+    manual_total_netto: r.manual_total_netto,
     notes: r.notes ?? '',
+  }
+}
+
+function syncManualTotal(enabled: boolean) {
+  if (!enabled) {
+    form.value.manual_total_netto = null
+    return
+  }
+  if (form.value.manual_total_netto === null && rental.value?.total_netto) {
+    form.value.manual_total_netto = Number(rental.value.total_netto)
   }
 }
 
@@ -268,6 +320,7 @@ async function save() {
       payload.hourly_rate = null
     }
     if (!payload.transport_description) payload.transport_description = null
+    if (!payload.manual_total_enabled) payload.manual_total_netto = null
     if (!payload.is_term_estimated || !payload.term_note) payload.term_note = null
     if (!payload.notes) payload.notes = null
     const { data } = await api.patch(`/rentals/${route.params.id}`, payload)
@@ -297,4 +350,13 @@ onMounted(async () => {
 
 <style scoped>
 .field-label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #aaa; }
+.manual-total-row {
+  background: rgba(251, 191, 36, 0.10);
+  border: 1px solid rgba(180, 83, 9, 0.18);
+  border-radius: 12px;
+  padding: 12px;
+}
+.manual-total-row.active {
+  border-color: rgba(180, 83, 9, 0.48);
+}
 </style>

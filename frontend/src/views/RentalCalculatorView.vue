@@ -104,6 +104,40 @@
             <q-input class="col-12 col-sm-6" v-model.number="form.discount_pct" type="number" step="0.1" label="Rabat" suffix="%" />
             <q-input class="col-12 col-sm-6" v-model.number="form.surcharge_pct" type="number" step="0.1" label="Dopłata" suffix="%" />
           </div>
+
+          <div class="manual-total-box q-mt-md" :class="{ active: form.manual_total_enabled }">
+            <div class="row items-center q-col-gutter-md">
+              <div class="col-12 col-md">
+                <q-toggle
+                  v-model="form.manual_total_enabled"
+                  color="warning"
+                  checked-icon="priority_high"
+                  unchecked-icon="calculate"
+                  label="Cena końcowa ręcznie"
+                  @update:model-value="syncManualTotal"
+                />
+                <div class="text-caption text-grey-7 q-mt-xs">
+                  Użyj, gdy cena jest dogadana telefonicznie i systemowy wzór ma nie nadpisywać kwoty.
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <q-input
+                  v-model.number="form.manual_total_netto"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  label="Końcowa cena netto"
+                  suffix="zł"
+                  :disable="!form.manual_total_enabled"
+                  :rules="manualTotalRules"
+                >
+                  <template #prepend>
+                    <q-icon name="priority_high" color="warning" />
+                  </template>
+                </q-input>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section class="pricing-card">
@@ -197,8 +231,16 @@
         <q-card flat class="summary-card">
           <q-card-section>
             <div class="text-overline text-grey-7">Podsumowanie netto</div>
-            <div class="summary-total">{{ calc?.total_netto ?? '—' }} zł</div>
+            <div class="summary-total">{{ displayTotal }} zł</div>
             <div class="text-body2 text-grey-7">{{ modeLabel }}</div>
+            <q-badge
+              v-if="form.manual_total_enabled"
+              color="warning"
+              text-color="black"
+              icon="priority_high"
+              label="Cena ręczna"
+              class="q-mt-sm"
+            />
           </q-card-section>
 
           <q-separator />
@@ -226,6 +268,9 @@
             <div class="summary-row">
               <span>Transport</span>
               <strong>{{ calc?.transport_cost ?? '0.00' }} zł</strong>
+            </div>
+            <div v-if="form.manual_total_enabled && calc" class="mini-breakdown warning">
+              Wyliczenie systemu: {{ calc.total_netto }} zł. Do umowy trafi kwota ręczna.
             </div>
           </q-card-section>
 
@@ -280,6 +325,8 @@ const form = ref<any>({
   transport_description: '',
   discount_pct: 0,
   surcharge_pct: 0,
+  manual_total_enabled: false,
+  manual_total_netto: null,
   billing_entity: 'topkop_jdg',
   notes: ''
 })
@@ -296,6 +343,18 @@ const modeLabel = computed(() => (
       ? 'Dobowo · operator w cenie'
       : 'Bez operatora · dobowo'
 ))
+
+const manualTotalRules = [
+  (value: number | null) => !form.value.manual_total_enabled || value !== null || 'Podaj cenę',
+  (value: number | null) => !form.value.manual_total_enabled || Number(value) >= 0 || 'Cena musi być >= 0'
+]
+
+const displayTotal = computed(() => {
+  if (form.value.manual_total_enabled && form.value.manual_total_netto !== null) {
+    return Number(form.value.manual_total_netto).toFixed(2)
+  }
+  return calc.value?.total_netto ?? '—'
+})
 
 onMounted(async () => {
   const { data } = await api.get('/equipment')
@@ -339,6 +398,16 @@ function appendTransportRate(text: string): void {
   form.value.transport_description = form.value.transport_description
     ? `${form.value.transport_description}; ${text}`
     : text
+}
+
+function syncManualTotal(enabled: boolean): void {
+  if (!enabled) {
+    form.value.manual_total_netto = null
+    return
+  }
+  if (form.value.manual_total_netto === null && calc.value?.total_netto) {
+    form.value.manual_total_netto = Number(calc.value.total_netto)
+  }
 }
 
 async function lookupNip(): Promise<void> {
@@ -426,6 +495,8 @@ function normalizedPayload(): any {
     hourly_rate: form.value.billing_mode === 'hourly' ? form.value.hourly_rate : null,
     transport_cost: form.value.transport_cost || 0,
     transport_description: form.value.transport_description || null,
+    manual_total_enabled: form.value.manual_total_enabled,
+    manual_total_netto: form.value.manual_total_enabled ? form.value.manual_total_netto : null,
     term_note: form.value.is_term_estimated ? (form.value.term_note || null) : null,
     notes: form.value.notes || null
   }
@@ -545,11 +616,22 @@ async function submit(): Promise<void> {
 
 .operator-panel,
 .term-box,
+.manual-total-box,
 .transport-strip {
   background: #f8fafc;
   border: 1px solid rgba(15, 23, 42, 0.07);
   border-radius: 18px;
   padding: 16px;
+}
+
+.manual-total-box {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.13), rgba(248, 250, 252, 0.94));
+  border-color: rgba(180, 83, 9, 0.18);
+}
+
+.manual-total-box.active {
+  border-color: rgba(180, 83, 9, 0.52);
+  box-shadow: 0 16px 34px rgba(180, 83, 9, 0.13);
 }
 
 .transport-strip {
@@ -599,6 +681,11 @@ async function submit(): Promise<void> {
   background: #f8fafc;
   border-radius: 12px;
   padding: 10px;
+}
+
+.mini-breakdown.warning {
+  background: rgba(251, 191, 36, 0.14);
+  color: #92400e;
 }
 
 .field-label {

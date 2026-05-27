@@ -82,6 +82,8 @@ class Rental(Base):
     surcharge_pct: Mapped[Decimal] = mapped_column(
         Numeric(5, 2), default=Decimal("0"), nullable=False
     )
+    manual_total_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    manual_total_netto: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
 
     rental_days: Mapped[int] = mapped_column(Integer, nullable=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

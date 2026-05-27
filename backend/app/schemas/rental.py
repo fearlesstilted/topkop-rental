@@ -64,6 +64,8 @@ class RentalCreate(BaseModel):
     transport_description: str | None = None
     discount_pct: Decimal = Decimal("0")
     surcharge_pct: Decimal = Decimal("0")
+    manual_total_enabled: bool = False
+    manual_total_netto: Decimal | None = None
     billing_entity: BillingEntity = BillingEntity.TOPKOP_JDG
     notes: str | None = None
 
@@ -92,6 +94,8 @@ class RentalUpdate(BaseModel):
     transport_description: str | None = None
     discount_pct: Decimal | None = None
     surcharge_pct: Decimal | None = None
+    manual_total_enabled: bool | None = None
+    manual_total_netto: Decimal | None = None
     billing_entity: BillingEntity | None = None
     notes: str | None = None
 
@@ -123,6 +127,8 @@ class RentalOut(BaseModel):
     transport_description: str | None
     discount_pct: Decimal
     surcharge_pct: Decimal
+    manual_total_enabled: bool
+    manual_total_netto: Decimal | None
     rental_days: int
     subtotal: Decimal
     total_netto: Decimal

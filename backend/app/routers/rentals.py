@@ -1,3 +1,4 @@
+from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Response, status
 from sqlalchemy import select
@@ -37,9 +38,35 @@ _RECALCULATED_FIELDS = {
     "transport_cost",
     "discount_pct",
     "surcharge_pct",
+    "manual_total_enabled",
+    "manual_total_netto",
 }
+_CENTS = Decimal("0.01")
 
 router = APIRouter()
+
+
+def _money(value: Decimal) -> Decimal:
+    return value.quantize(_CENTS, rounding=ROUND_HALF_UP)
+
+
+def _resolve_totals(
+    *,
+    calculated_subtotal: Decimal,
+    calculated_total: Decimal,
+    manual_total_enabled: bool,
+    manual_total_netto: Decimal | None,
+) -> tuple[Decimal, Decimal, Decimal | None]:
+    if not manual_total_enabled:
+        return calculated_subtotal, calculated_total, None
+
+    if manual_total_netto is None:
+        raise HTTPException(status_code=422, detail="Podaj końcową cenę netto.")
+    if manual_total_netto < 0:
+        raise HTTPException(status_code=422, detail="Końcowa cena netto musi być >= 0.")
+
+    total = _money(manual_total_netto)
+    return total, total, total
 
 
 @router.post("/calculate", response_model=RentalCalcResponse)
@@ -126,6 +153,13 @@ async def create_rental(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    subtotal, total_netto, manual_total_netto = _resolve_totals(
+        calculated_subtotal=calc.subtotal,
+        calculated_total=calc.total_netto,
+        manual_total_enabled=payload.manual_total_enabled,
+        manual_total_netto=payload.manual_total_netto,
+    )
+
     rental = Rental(
         equipment_id=payload.equipment_id,
         client_name=payload.client_name,
@@ -151,9 +185,11 @@ async def create_rental(
         transport_description=payload.transport_description,
         discount_pct=payload.discount_pct,
         surcharge_pct=payload.surcharge_pct,
+        manual_total_enabled=payload.manual_total_enabled,
+        manual_total_netto=manual_total_netto,
         rental_days=days,
-        subtotal=calc.subtotal,
-        total_netto=calc.total_netto,
+        subtotal=subtotal,
+        total_netto=total_netto,
         billing_entity=payload.billing_entity,
         notes=payload.notes,
     )
@@ -204,9 +240,16 @@ async def update_rental(
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+        subtotal, total_netto, manual_total_netto = _resolve_totals(
+            calculated_subtotal=calc.subtotal,
+            calculated_total=calc.total_netto,
+            manual_total_enabled=item.manual_total_enabled,
+            manual_total_netto=item.manual_total_netto,
+        )
+        item.manual_total_netto = manual_total_netto
         item.rental_days = days
-        item.subtotal = calc.subtotal
-        item.total_netto = calc.total_netto
+        item.subtotal = subtotal
+        item.total_netto = total_netto
 
     await session.commit()
     await session.refresh(item)

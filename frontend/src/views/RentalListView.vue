@@ -35,6 +35,19 @@
         </q-td>
       </template>
 
+      <template #body-cell-total="{ row }">
+        <q-td class="text-right">
+          <div>{{ row.total_netto }}</div>
+          <q-badge
+            v-if="row.manual_total_enabled"
+            color="warning"
+            text-color="black"
+            label="!"
+            class="q-mt-xs"
+          />
+        </q-td>
+      </template>
+
       <template #body-cell-actions="{ row }">
         <q-td auto-width class="q-gutter-xs">
           <q-btn
