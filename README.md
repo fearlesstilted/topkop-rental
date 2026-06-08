@@ -2,7 +2,7 @@
 
 Internal rental operations system for TopKop construction equipment.
 
-The goal is simple: replace spreadsheet/manual chaos with one small tool for pricing, contracts, inspections, equipment status, and the daily operations board.
+The system replaces spreadsheet-based rental handling with one internal workflow for pricing, contracts, equipment inspections, equipment status and daily operations.
 
 ## What It Does
 
@@ -30,13 +30,13 @@ Optional pricing fields:
 - surcharge percentage;
 - free-form transport cost;
 - transport description, for example route or km rate;
-- billing entity: `TOP KOP Krzysztof Świtaj` or `TK Sp. z o.o.`.
+- billing entity selected from the configured company profiles.
 
 The final `total_netto` includes the rental/operator price and transport.
 
 ### Tablica Operacyjna
 
-The board is intentionally not a heavy kanban system. It is a small operational board for 2-3 people.
+The board is a compact operational view for a small service team, not a general-purpose kanban product.
 
 Columns:
 

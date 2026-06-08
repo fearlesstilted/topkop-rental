@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -49,6 +49,13 @@ class Settings(BaseSettings):
     company_spzoo_regon: str = ""
     company_spzoo_phone: str = "503 839 393"
     company_spzoo_email: str = "biuro.topkop@gmail.com"
+
+    @model_validator(mode="after")
+    def reject_development_secret_in_production(self) -> "Settings":
+        development_secrets = {"change-me", "dev-secret-change-me"}
+        if self.app_env.lower() == "production" and self.secret_key in development_secrets:
+            raise ValueError("SECRET_KEY must be set to a strong value in production")
+        return self
 
     @field_validator("database_url")
     @classmethod

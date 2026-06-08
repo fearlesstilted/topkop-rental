@@ -33,7 +33,7 @@ Required Render environment variables:
 ```env
 DATABASE_URL=postgresql://...
 APP_ENV=production
-SECRET_KEY=change-me
+SECRET_KEY=generate-a-strong-secret-before-deploy
 CORS_ORIGINS=https://your-frontend.pages.dev
 PIN_DEFAULT_BIURO=
 PIN_DEFAULT_MANAGER=
